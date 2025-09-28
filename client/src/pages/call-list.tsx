@@ -173,7 +173,7 @@ export default function CallList() {
         callId: call.id,
         updates: { 
           status: 'in_progress',
-          callStartedAt: currentCallStartTime,
+          callStartedAt: currentCallStartTime.toISOString(),
           agentId: user?.id
         }
       });
@@ -190,7 +190,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'called',
-        callEndedAt: new Date(),
+        callEndedAt: new Date().toISOString(),
         callRemarks: remarks || null
       }
     });
@@ -210,7 +210,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'unattended',
-        callEndedAt: new Date()
+        callEndedAt: new Date().toISOString()
       }
     });
     setShowCustomerModal(false);

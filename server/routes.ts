@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { z } from "zod";
-import { insertCallSchema, insertProductSchema, insertTransactionSchema, insertUserSchema, updateUserSchema } from "@shared/schema";
+import { insertCallSchema, insertProductSchema, insertTransactionSchema, updateTransactionSchema, insertUserSchema, updateUserSchema } from "@shared/schema";
 import multer from "multer";
 import Papa from "papaparse";
 
@@ -270,7 +270,7 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/transactions/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = insertTransactionSchema.partial().parse(req.body);
+      const updates = updateTransactionSchema.parse(req.body);
       const transaction = await storage.updateTransaction(id, updates);
       
       if (!transaction) {
