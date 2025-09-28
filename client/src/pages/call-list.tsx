@@ -22,11 +22,14 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Search, Phone, Filter } from "lucide-react";
+import { Search, Phone, Filter, Upload, StickyNote } from "lucide-react";
 import { Transaction, Product } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { CsvImport } from "@/components/csv-import";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function CallList() {
   const [selectedCall, setSelectedCall] = useState<Transaction | null>(null);
@@ -125,12 +128,10 @@ export default function CallList() {
     }).format(amount);
   };
 
-  const formatDateTime = (date: Date) => {
+  const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-PH', {
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     }).format(new Date(date));
   };
 
@@ -181,7 +182,7 @@ export default function CallList() {
     setShowCustomerModal(true);
   };
 
-  const handleEndCall = (callId: string) => {
+  const handleEndCall = (callId: string, remarks?: string) => {
     // Stop timer
     setIsTimerRunning(false);
     
@@ -189,7 +190,8 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'called',
-        callEndedAt: new Date()
+        callEndedAt: new Date(),
+        callRemarks: remarks || null
       }
     });
     setShowCustomerModal(false);
@@ -232,7 +234,7 @@ export default function CallList() {
           orderSku: newProduct.sku,
           currentPrice: newProduct.price,
           // Calculate revenue and mark as upsell
-          revenue: Number(newProduct.price) - Number(call.currentPrice),
+          revenue: (Number(newProduct.price) - Number(call.currentPrice)).toString(),
           isUpsell: true,
           status: 'completed'
         }
@@ -271,6 +273,45 @@ export default function CallList() {
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Call List</h2>
               <p className="text-sm text-muted-foreground">Manage and track customer calls</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-import-confirmation">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Confirmation Calls
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Import Confirmation Calls</DialogTitle>
+                  </DialogHeader>
+                  <CsvImport 
+                    callType="confirmation"
+                    title="Import Confirmation Calls"
+                    description="Upload a CSV file with confirmation calls. Required columns: DATE, NAME, PHONE, ORDER, PRICE"
+                  />
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-import-promotional">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Promotional Calls
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Import Promotional Calls</DialogTitle>
+                  </DialogHeader>
+                  <CsvImport 
+                    callType="promo"
+                    title="Import Promotional Calls"
+                    description="Upload a CSV file with promotional calls. Required columns: DATE, NAME, PHONE, ORDER, PRICE"
+                  />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </header>
@@ -341,25 +382,48 @@ export default function CallList() {
                       <TableHead>Phone</TableHead>
                       <TableHead>Order</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Call Status</TableHead>
+                      <TableHead>Order Status</TableHead>
                       <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredCalls?.map((call) => (
                       <TableRow key={call.id} data-testid={`call-row-${call.id}`}>
-                        <TableCell>{formatDateTime(call.date)}</TableCell>
-                        <TableCell className="font-medium">{call.customerName}</TableCell>
+                        <TableCell>{formatDate(call.date)}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {call.customerName}
+                            {call.callRemarks && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <StickyNote className="h-4 w-4 text-blue-600" data-testid={`note-icon-${call.id}`} />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">{call.callRemarks}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{call.phone}</TableCell>
                         <TableCell>{call.orderSku}</TableCell>
                         <TableCell>{formatCurrency(Number(call.currentPrice))}</TableCell>
                         <TableCell>
                           <Badge variant={getStatusBadgeVariant(call.status)}>
-                            {call.status.replace('_', ' ').toUpperCase()}
+                            {call.status === 'new' ? 'Call' : 
+                             call.status === 'called' ? 'Called' : 
+                             call.status === 'unattended' ? 'Unattended' :
+                             call.status.replace('_', ' ')}
                           </Badge>
                         </TableCell>
-                        <TableCell className="capitalize">{call.callType}</TableCell>
+                        <TableCell>
+                          <Badge variant={call.status === 'completed' && call.isUpsell ? 'default' : 'secondary'}>
+                            {call.status === 'completed' ? (call.isUpsell ? 'Purchased' : 'Reservation') : '-'}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <Button
                             size="sm"
@@ -368,7 +432,9 @@ export default function CallList() {
                             data-testid={`button-call-${call.id}`}
                           >
                             <Phone className="h-4 w-4 mr-2" />
-                            {call.status === 'completed' ? 'Completed' : 'Call'}
+                            {call.status === 'completed' ? 'Completed' : 
+                             call.status === 'called' ? 'Called' :
+                             call.status === 'unattended' ? 'Unattended' : 'Call'}
                           </Button>
                         </TableCell>
                       </TableRow>
