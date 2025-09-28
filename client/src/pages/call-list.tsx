@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/sidebar";
 import { CustomerModal } from "@/components/customer-modal";
 import { UpsellModal } from "@/components/upsell-modal";
-import { CsvImport } from "@/components/csv-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Table, 
   TableBody, 
@@ -24,7 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Search, Phone, Upload, Filter } from "lucide-react";
+import { Search, Phone, Filter } from "lucide-react";
 import { Call, Product } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,11 +35,30 @@ export default function CallList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [callTypeFilter, setCallTypeFilter] = useState("");
-  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [callTimer, setCallTimer] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setCallTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning]);
+
+  const formatCallTimer = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const { data: calls, isLoading } = useQuery<Call[]>({
     queryKey: ["/api/calls"],
@@ -93,7 +110,6 @@ export default function CallList() {
 
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-PH', {
-      year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -115,13 +131,31 @@ export default function CallList() {
   const handleCallClick = (call: Call) => {
     setSelectedCall(call);
     
+    // Start or resume timer when opening call
+    const now = new Date();
+    let currentCallStartTime = callStartTime;
+    
+    // If call was already started, use existing start time
+    if (call.callStartedAt) {
+      currentCallStartTime = new Date(call.callStartedAt);
+      const elapsed = Math.floor((now.getTime() - currentCallStartTime.getTime()) / 1000);
+      setCallTimer(elapsed);
+    } else {
+      // New call - start fresh
+      setCallTimer(0);
+      currentCallStartTime = now;
+      setCallStartTime(currentCallStartTime);
+    }
+    
+    setIsTimerRunning(true);
+    
     // Update call status to in_progress when opened
     if (call.status === 'new') {
       updateCallMutation.mutate({
         callId: call.id,
         updates: { 
           status: 'in_progress',
-          callStartedAt: new Date().toISOString(),
+          callStartedAt: currentCallStartTime.toISOString(),
           agentId: user?.id
         }
       });
@@ -131,6 +165,9 @@ export default function CallList() {
   };
 
   const handleEndCall = (callId: string) => {
+    // Stop timer
+    setIsTimerRunning(false);
+    
     updateCallMutation.mutate({
       callId,
       updates: { 
@@ -147,6 +184,9 @@ export default function CallList() {
   };
 
   const handleMarkUnattended = (callId: string) => {
+    // Stop timer
+    setIsTimerRunning(false);
+    
     updateCallMutation.mutate({
       callId,
       updates: { 
@@ -157,17 +197,6 @@ export default function CallList() {
     setShowCustomerModal(false);
   };
 
-  const handleUndo = (callId: string) => {
-    updateCallMutation.mutate({
-      callId,
-      updates: { 
-        status: 'new',
-        callStartedAt: null,
-        callEndedAt: null
-      }
-    });
-    setShowCustomerModal(false);
-  };
 
   const handleAcceptUpsell = (callId: string, newProductSku: string) => {
     const call = calls?.find(c => c.id === callId);
@@ -230,22 +259,6 @@ export default function CallList() {
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Call List</h2>
               <p className="text-sm text-muted-foreground">Manage and track customer calls</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-import-csv">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import CSV
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Import Call List</DialogTitle>
-                  </DialogHeader>
-                  <CsvImport />
-                </DialogContent>
-              </Dialog>
             </div>
           </div>
         </header>
@@ -358,11 +371,15 @@ export default function CallList() {
         {/* Customer Modal */}
         <CustomerModal
           isOpen={showCustomerModal}
-          onClose={() => setShowCustomerModal(false)}
+          onClose={() => {
+            setIsTimerRunning(false);
+            // Don't reset timer - preserve duration for resume
+            setShowCustomerModal(false);
+          }}
           call={selectedCall}
           onEndCall={handleEndCall}
           onMarkUnattended={handleMarkUnattended}
-          onUndo={handleUndo}
+          callTimer={formatCallTimer(callTimer)}
         />
 
         {/* Upsell Modal */}

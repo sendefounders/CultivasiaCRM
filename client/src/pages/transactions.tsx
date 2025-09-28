@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/sidebar";
+import { CsvImport } from "@/components/csv-import";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Table, 
   TableBody, 
@@ -11,12 +14,14 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, TrendingUp, DollarSign } from "lucide-react";
+import { Search, TrendingUp, DollarSign, Upload } from "lucide-react";
 import { Transaction } from "@shared/schema";
 import { useState } from "react";
 
 export default function Transactions() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showConfirmationImport, setShowConfirmationImport] = useState(false);
+  const [showPromotionalImport, setShowPromotionalImport] = useState(false);
 
   const { data: transactions, isLoading } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
@@ -73,6 +78,46 @@ export default function Transactions() {
                   data-testid="input-search-transactions"
                 />
               </div>
+              
+              {/* Confirmation Calls Import */}
+              <Dialog open={showConfirmationImport} onOpenChange={setShowConfirmationImport}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-import-confirmation">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Confirmation Calls
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Import Confirmation Calls (Upsell)</DialogTitle>
+                  </DialogHeader>
+                  <CsvImport 
+                    callType="confirmation"
+                    title="Import Confirmation Calls"
+                    description="Upload CSV for confirmation calls (upsell opportunities). Required columns: DATE, NAME, PHONE, ORDER, PRICE"
+                  />
+                </DialogContent>
+              </Dialog>
+
+              {/* Promotional Calls Import */}
+              <Dialog open={showPromotionalImport} onOpenChange={setShowPromotionalImport}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-import-promotional">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Promotional Calls
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Import Promotional Calls (Retention)</DialogTitle>
+                  </DialogHeader>
+                  <CsvImport 
+                    callType="promo"
+                    title="Import Promotional Calls" 
+                    description="Upload CSV for promotional calls (retention campaigns). Required columns: DATE, NAME, PHONE, ORDER, PRICE"
+                  />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </header>

@@ -2,10 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sidebar } from "@/components/sidebar";
 import { Phone, TrendingUp, DollarSign, Percent, Search, Plus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from "@/hooks/use-auth";
+import { useState, useMemo } from "react";
 
 interface DashboardStats {
   totalCallsToday: number;
@@ -27,6 +29,7 @@ interface AgentPerformance {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [dateFilter, setDateFilter] = useState("7"); // Default to last 7 days
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -35,6 +38,19 @@ export default function Dashboard() {
   const { data: agentPerformance, isLoading: performanceLoading } = useQuery<AgentPerformance[]>({
     queryKey: ["/api/dashboard/agent-performance"],
   });
+
+  // Filter chart data based on selected date range
+  const filteredChartData = useMemo(() => {
+    if (!stats?.revenueByDay) return [];
+    
+    const days = parseInt(dateFilter);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return stats.revenueByDay
+      .filter(item => new Date(item.date) >= cutoffDate)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [stats?.revenueByDay, dateFilter]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -171,11 +187,16 @@ export default function Dashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Sales Performance</CardTitle>
-                  <select className="border border-border rounded-lg px-3 py-2 text-sm">
-                    <option>Last 7 days</option>
-                    <option>Last 30 days</option>
-                    <option>Last 3 months</option>
-                  </select>
+                  <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <SelectTrigger className="w-40" data-testid="select-date-filter">
+                      <SelectValue placeholder="Select period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">Last 7 days</SelectItem>
+                      <SelectItem value="30">Last 30 days</SelectItem>
+                      <SelectItem value="90">Last 3 months</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardHeader>
               <CardContent>
@@ -189,11 +210,21 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={stats?.revenueByDay || []}>
+                      <LineChart data={filteredChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        />
                         <YAxis />
-                        <Tooltip formatter={(value) => [formatCurrency(Number(value)), "Revenue"]} />
+                        <Tooltip 
+                          formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
+                          labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { 
+                            month: 'long', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        />
                         <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
                       </LineChart>
                     </ResponsiveContainer>

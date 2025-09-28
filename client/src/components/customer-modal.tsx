@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, PhoneOff, AlertTriangle, Undo2 } from "lucide-react";
+import { Phone, PhoneOff, AlertTriangle } from "lucide-react";
 import { Call, CallHistory } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 
@@ -11,7 +11,7 @@ interface CustomerModalProps {
   call: Call | null;
   onEndCall: (callId: string) => void;
   onMarkUnattended: (callId: string) => void;
-  onUndo: (callId: string) => void;
+  callTimer?: string;
 }
 
 export function CustomerModal({ 
@@ -19,8 +19,8 @@ export function CustomerModal({
   onClose, 
   call, 
   onEndCall, 
-  onMarkUnattended, 
-  onUndo 
+  onMarkUnattended,
+  callTimer
 }: CustomerModalProps) {
   const { data: callHistory } = useQuery<CallHistory[]>({
     queryKey: ["/api/calls", call?.id, "history"],
@@ -69,14 +69,21 @@ export function CustomerModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto" data-testid="customer-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Customer Information
-            <Badge variant={getStatusBadgeVariant(call.status)} data-testid="badge-call-status">
-              {call.status.replace('_', ' ').toUpperCase()}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              {callTimer && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700" data-testid="badge-call-timer">
+                  ⏱️ {callTimer}
+                </Badge>
+              )}
+              <Badge variant={getStatusBadgeVariant(call.status)} data-testid="badge-call-status">
+                {call.status.replace('_', ' ').toUpperCase()}
+              </Badge>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -177,16 +184,6 @@ export function CustomerModal({
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
               Unattended
-            </Button>
-            <Button
-              onClick={() => onUndo(call.id)}
-              variant="outline"
-              className="flex-1"
-              data-testid="button-undo-call"
-              disabled={call.status === 'new'}
-            >
-              <Undo2 className="h-4 w-4 mr-2" />
-              Undo
             </Button>
           </div>
         </div>
