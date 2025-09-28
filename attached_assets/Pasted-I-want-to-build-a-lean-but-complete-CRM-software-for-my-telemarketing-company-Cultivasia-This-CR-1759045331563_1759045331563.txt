@@ -1,0 +1,124 @@
+I want to build a lean but complete CRM software for my telemarketing company (Cultivasia).
+This CRM will manage telemarketing calls, upsells, transactions, and agent performance, with a Monday.com-inspired sidebar UI.
+
+Please generate the backend + frontend (React/Next.js or Node/Express + Postgres preferred, but open to MERN).
+Keep the MVP lean, but include the following:
+
+🔐 Authentication & Roles
+Custom username/password authentication (no 3rd party SSO for MVP).
+
+Roles: Admin and Agent.
+
+Admin can add Agents with username/password inside Setup tab.
+
+Session-based or JWT auth (whichever is simpler in this stack).
+
+📑 Sidebar Navigation (Monday.com inspired)
+Tabs:
+
+Dashboard
+
+Call List
+
+Transactions
+
+Setup
+
+Sidebar should be collapsible and responsive.
+
+📞 Call Management
+Call List Table columns: Date, Customer Name, Phone Number, Order, Current Price, Agent Assigned, Status, Call Button.
+
+Filters: Date range, Call Type (Confirmation, Promo), Status, Agent.
+
+Call Button behavior:
+
+Opens Customer Info popup with details + call history.
+
+Buttons: End Call, Unattended, Undo.
+
+After “End Call”: Show Upsell Popup with:
+
+Original order vs new product selection.
+
+Price comparison.
+
+Buttons: Upsell / Decline.
+
+After Upsell/Decline → Call button greys out (locked).
+
+Call status tracking: New, In Progress, Called, Unattended, Completed. Add timestamps.
+
+💰 Transactions
+Transactions tab updates real-time when upsells complete.
+
+Audit trail for all upsells and call outcomes.
+
+CSV Import (for Confirmation Calls + Promo Calls) with:
+
+Auto-detection of columns: Date, Name, Order, Quantity, Address.
+
+Preview + validation + error messages before final import.
+
+Prevent duplicate imports.
+
+Manual “Create Order” form.
+
+📊 Dashboard Metrics
+Sales charts (daily/weekly/monthly).
+
+Upsell amount.
+
+Conversion rates (Confirmation Calls vs Promo Calls).
+
+Agent performance leaderboard.
+
+Agent scorecards (calls handled, upsells closed, conversion rate).
+
+⚙️ Setup Tab (Admin only)
+Product management: SKU, Name, Price, Units, Active/Inactive toggle.
+
+Agent management: Add/Remove agents, reset passwords.
+
+Agent assignment logic:
+
+Distribute new leads evenly across available agents.
+
+Reassign if agent marked inactive.
+
+🛠 Additional Features (Lean MVP)
+CSV error handling with row highlighting.
+
+Responsive design with Monday.com-style loading states + error messages.
+
+Duplicate protection: check phone number + date.
+
+Greyed-out call button after call outcome chosen.
+
+Basic audit logs: who imported, who updated, timestamp.
+
+Search bar across Call List + Transactions.
+
+🔧 Stack Recommendation
+Frontend: React (Next.js preferred), shadcn/ui for UI components, Recharts for charts.
+
+Backend: Node/Express or Next.js API routes.
+
+Database: Postgres (Prisma ORM).
+
+Auth: JWT-based sessions.
+
+File parsing: Papaparse or Fast-CSV.
+
+Deployment: Vercel (frontend) + Supabase/Render (backend+db).
+
+🎯 Output Required
+Database schema (SQL or Prisma).
+
+REST or GraphQL endpoints for: Auth, Calls, Transactions, Products, Agents.
+
+Example seed data for testing.
+
+Working CRUD UI for all tabs.
+
+Minimal but clean styling (responsive).
