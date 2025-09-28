@@ -65,6 +65,7 @@ export const transactions = pgTable("transactions", {
   agentId: varchar("agent_id").references(() => users.id),
   callStartedAt: timestamp("call_started_at"),
   callEndedAt: timestamp("call_ended_at"),
+  callRemarks: text("call_remarks"),
   // Upsell fields (nullable for original orders)
   originalOrderSku: text("original_order_sku"),
   originalPrice: decimal("original_price", { precision: 10, scale: 2 }),

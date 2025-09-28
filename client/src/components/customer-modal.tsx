@@ -1,15 +1,18 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Phone, PhoneOff, AlertTriangle } from "lucide-react";
-import { Call, CallHistory } from "@shared/schema";
+import { Transaction, CallHistory } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  call: Call | null;
-  onEndCall: (callId: string) => void;
+  call: Transaction | null;
+  onEndCall: (callId: string, remarks?: string) => void;
   onMarkUnattended: (callId: string) => void;
   callTimer?: string;
 }
@@ -22,10 +25,24 @@ export function CustomerModal({
   onMarkUnattended,
   callTimer
 }: CustomerModalProps) {
+  const [showRemarksInput, setShowRemarksInput] = useState(false);
+  const [remarks, setRemarks] = useState("");
+
+  const handleEndCallClick = () => {
+    setShowRemarksInput(true);
+  };
+
+  const handleSaveRemarks = () => {
+    if (call) {
+      onEndCall(call.id, remarks);
+      setShowRemarksInput(false);
+      setRemarks("");
+    }
+  };
   const { data: callHistory } = useQuery<CallHistory[]>({
-    queryKey: ["/api/calls", call?.id, "history"],
+    queryKey: ["/api/transactions", call?.id, "history"],
     queryFn: async () => {
-      const response = await fetch(`/api/calls/${call?.id}/history`, {
+      const response = await fetch(`/api/transactions/${call?.id}/history`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -164,28 +181,62 @@ export function CustomerModal({
             </div>
           </div>
 
+          {/* Call Remarks Input */}
+          {showRemarksInput && (
+            <div className="space-y-3 p-4 bg-secondary rounded-lg">
+              <Label htmlFor="call-remarks">Call Remarks (Optional)</Label>
+              <Textarea
+                id="call-remarks"
+                placeholder="Add any notes about this call..."
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="min-h-[80px]"
+                data-testid="textarea-call-remarks"
+              />
+              <div className="flex space-x-2">
+                <Button
+                  onClick={handleSaveRemarks}
+                  className="flex-1"
+                  data-testid="button-save-remarks"
+                >
+                  <PhoneOff className="h-4 w-4 mr-2" />
+                  Save & End Call
+                </Button>
+                <Button
+                  onClick={() => setShowRemarksInput(false)}
+                  variant="outline"
+                  data-testid="button-cancel-remarks"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
-          <div className="flex space-x-3">
-            <Button
-              onClick={() => onEndCall(call.id)}
-              className="flex-1"
-              data-testid="button-end-call"
-              disabled={call.status === 'completed'}
-            >
-              <PhoneOff className="h-4 w-4 mr-2" />
-              End Call
-            </Button>
-            <Button
-              onClick={() => onMarkUnattended(call.id)}
-              variant="secondary"
-              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
-              data-testid="button-mark-unattended"
-              disabled={call.status === 'completed'}
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Unattended
-            </Button>
-          </div>
+          {!showRemarksInput && (
+            <div className="flex space-x-3">
+              <Button
+                onClick={handleEndCallClick}
+                className="flex-1"
+                data-testid="button-end-call"
+                disabled={call.status === 'completed'}
+              >
+                <PhoneOff className="h-4 w-4 mr-2" />
+                End Call
+              </Button>
+              <Button
+                onClick={() => onMarkUnattended(call.id)}
+                variant="secondary"
+                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                data-testid="button-mark-unattended"
+                disabled={call.status === 'completed'}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Unattended
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

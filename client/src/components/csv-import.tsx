@@ -33,12 +33,12 @@ export function CsvImport({ callType = 'confirmation', title, description }: Csv
       formData.append('csvFile', file);
       formData.append('callType', callType);
       
-      const response = await apiRequest('POST', '/api/calls/import', formData);
+      const response = await apiRequest('POST', '/api/transactions/import', formData);
       return await response.json();
     },
     onSuccess: (result: ImportResult) => {
       setImportResult(result);
-      queryClient.invalidateQueries({ queryKey: ['/api/calls'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       
       if (result.success > 0) {
         toast({

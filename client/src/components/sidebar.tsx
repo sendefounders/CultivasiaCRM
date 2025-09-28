@@ -23,7 +23,6 @@ export function Sidebar() {
   const navigation = [
     { name: "Dashboard", href: "/", icon: BarChart3, id: "dashboard" },
     { name: "Call List", href: "/call-list", icon: List, id: "call-list" },
-    { name: "Transactions", href: "/transactions", icon: Receipt, id: "transactions" },
     { name: "Setup", href: "/setup", icon: Settings, id: "setup", adminOnly: true },
   ];
 
