@@ -151,6 +151,18 @@ export function CustomerModal({
             </div>
           )}
 
+          {/* Call Remarks */}
+          {call.callRemarks && (
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Call Remarks</h4>
+              <div className="p-3 bg-secondary rounded-lg">
+                <p className="text-sm text-foreground" data-testid="text-call-remarks">
+                  {call.callRemarks}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Call History */}
           <div>
             <h4 className="font-semibold text-foreground mb-4">Call History</h4>

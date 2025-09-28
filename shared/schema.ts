@@ -152,6 +152,21 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
   updatedAt: true,
 });
 
+export const updateTransactionSchema = insertTransactionSchema.extend({
+  callStartedAt: z.union([
+    z.date(),
+    z.string().datetime().transform(val => new Date(val))
+  ]).optional(),
+  callEndedAt: z.union([
+    z.date(),
+    z.string().datetime().transform(val => new Date(val))
+  ]).optional(),
+  date: z.union([
+    z.date(),
+    z.string().datetime().transform(val => new Date(val))
+  ]).optional(),
+}).partial();
+
 export const insertCallHistorySchema = createInsertSchema(callHistory).omit({
   id: true,
   createdAt: true,
