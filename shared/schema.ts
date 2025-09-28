@@ -68,6 +68,8 @@ export const transactions = pgTable("transactions", {
   // Upsell fields (nullable for original orders)
   originalOrderSku: text("original_order_sku"),
   originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+  newOrderSku: text("new_order_sku"),
+  newPrice: decimal("new_price", { precision: 10, scale: 2 }),
   revenue: decimal("revenue", { precision: 10, scale: 2 }),
   isUpsell: boolean("is_upsell").notNull().default(false),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
