@@ -15,7 +15,13 @@ interface ImportResult {
   duplicates: number;
 }
 
-export function CsvImport() {
+interface CsvImportProps {
+  callType?: 'confirmation' | 'promo';
+  title?: string;
+  description?: string;
+}
+
+export function CsvImport({ callType = 'confirmation', title, description }: CsvImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const { toast } = useToast();
@@ -25,6 +31,7 @@ export function CsvImport() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('csvFile', file);
+      formData.append('callType', callType);
       
       const response = await apiRequest('POST', '/api/calls/import', formData);
       return await response.json();
@@ -87,10 +94,10 @@ export function CsvImport() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          Import Call List
+          {title || 'Import Call List'}
         </CardTitle>
         <CardDescription>
-          Upload a CSV file to import call data. Required columns: DATE, NAME, PHONE, ORDER, PRICE
+          {description || 'Upload a CSV file to import call data. Required columns: DATE, NAME, PHONE, ORDER, PRICE'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
