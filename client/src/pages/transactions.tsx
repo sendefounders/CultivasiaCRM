@@ -48,8 +48,9 @@ export default function Transactions() {
 
   const filteredTransactions = transactions?.filter(transaction => {
     if (searchTerm === "") return true;
-    return transaction.originalOrderSku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           transaction.newOrderSku.toLowerCase().includes(searchTerm.toLowerCase());
+    return (transaction.originalOrderSku || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+           (transaction.orderSku || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+           transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const totalRevenue = transactions?.reduce((sum, t) => sum + Number(t.revenue), 0) || 0;

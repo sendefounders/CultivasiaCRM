@@ -23,13 +23,13 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Search, Phone, Filter } from "lucide-react";
-import { Call, Product } from "@shared/schema";
+import { Transaction, Product } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CallList() {
-  const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [selectedCall, setSelectedCall] = useState<Transaction | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,8 +60,25 @@ export default function CallList() {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const { data: calls, isLoading } = useQuery<Call[]>({
-    queryKey: ["/api/calls"],
+  const { data: calls, isLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/transactions", { statusFilter, callTypeFilter, searchTerm, agentId: user?.id }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter) params.append('status', statusFilter);
+      if (callTypeFilter) params.append('callType', callTypeFilter);
+      if (searchTerm) params.append('search', searchTerm);
+      if (user?.role === 'agent') {
+        params.append('agentId', user.id);
+      }
+      // Only show original orders (not upsells) in call list
+      params.append('isUpsell', 'false');
+      
+      const response = await fetch(`/api/transactions?${params}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+      return response.json();
+    },
   });
 
   const { data: products } = useQuery<Product[]>({
@@ -69,12 +86,12 @@ export default function CallList() {
   });
 
   const updateCallMutation = useMutation({
-    mutationFn: async ({ callId, updates }: { callId: string; updates: Partial<Call> }) => {
-      const response = await apiRequest('PUT', `/api/calls/${callId}`, updates);
+    mutationFn: async ({ callId, updates }: { callId: string; updates: Partial<Transaction> }) => {
+      const response = await apiRequest('PUT', `/api/transactions/${callId}`, updates);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/calls'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       toast({
         title: "Call updated successfully",
       });
@@ -95,7 +112,7 @@ export default function CallList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/calls'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
     },
   });
 
@@ -128,7 +145,7 @@ export default function CallList() {
     }
   };
 
-  const handleCallClick = (call: Call) => {
+  const handleCallClick = (call: Transaction) => {
     setSelectedCall(call);
     
     // Start or resume timer when opening call
@@ -155,7 +172,7 @@ export default function CallList() {
         callId: call.id,
         updates: { 
           status: 'in_progress',
-          callStartedAt: currentCallStartTime.toISOString(),
+          callStartedAt: currentCallStartTime,
           agentId: user?.id
         }
       });
@@ -172,7 +189,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'called',
-        callEndedAt: new Date().toISOString()
+        callEndedAt: new Date()
       }
     });
     setShowCustomerModal(false);
@@ -191,7 +208,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'unattended',
-        callEndedAt: new Date().toISOString()
+        callEndedAt: new Date()
       }
     });
     setShowCustomerModal(false);
@@ -204,24 +221,19 @@ export default function CallList() {
     const currentProduct = products?.find(p => p.sku === call?.orderSku);
     
     if (call && newProduct && currentProduct) {
-      // Create transaction
-      createTransactionMutation.mutate({
-        callId: call.id,
-        originalOrderSku: call.orderSku,
-        newOrderSku: newProduct.sku,
-        originalPrice: call.currentPrice,
-        newPrice: newProduct.price,
-        revenue: Number(newProduct.price) - Number(call.currentPrice),
-        agentId: user?.id,
-        isUpsell: true,
-      });
-
-      // Update call with new product and completed status
+      // Update existing transaction with upsell information
       updateCallMutation.mutate({
         callId: call.id,
         updates: {
+          // Store original order info
+          originalOrderSku: call.orderSku,
+          originalPrice: call.currentPrice,
+          // Update to new product
           orderSku: newProduct.sku,
           currentPrice: newProduct.price,
+          // Calculate revenue and mark as upsell
+          revenue: Number(newProduct.price) - Number(call.currentPrice),
+          isUpsell: true,
           status: 'completed'
         }
       });

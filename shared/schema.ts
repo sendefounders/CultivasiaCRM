@@ -49,20 +49,34 @@ export const calls = pgTable("calls", {
 
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  callId: varchar("call_id").notNull().references(() => calls.id),
-  originalOrderSku: text("original_order_sku").notNull(),
-  newOrderSku: text("new_order_sku").notNull(),
-  originalPrice: decimal("original_price", { precision: 10, scale: 2 }).notNull(),
-  newPrice: decimal("new_price", { precision: 10, scale: 2 }).notNull(),
-  revenue: decimal("revenue", { precision: 10, scale: 2 }).notNull(),
-  agentId: varchar("agent_id").notNull().references(() => users.id),
-  isUpsell: boolean("is_upsell").notNull().default(true),
+  // Original CSV data fields
+  date: timestamp("date").notNull(),
+  customerName: text("customer_name").notNull(),
+  phone: text("phone").notNull(),
+  awb: text("awb"),
+  orderSku: text("order_sku").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  currentPrice: decimal("current_price", { precision: 10, scale: 2 }).notNull(),
+  shippingFee: decimal("shipping_fee", { precision: 10, scale: 2 }),
+  address: text("address"),
+  // Call management fields
+  status: callStatusEnum("status").notNull().default('new'),
+  callType: callTypeEnum("call_type").notNull().default('confirmation'),
+  agentId: varchar("agent_id").references(() => users.id),
+  callStartedAt: timestamp("call_started_at"),
+  callEndedAt: timestamp("call_ended_at"),
+  // Upsell fields (nullable for original orders)
+  originalOrderSku: text("original_order_sku"),
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }),
+  isUpsell: boolean("is_upsell").notNull().default(false),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 export const callHistory = pgTable("call_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  callId: varchar("call_id").notNull().references(() => calls.id),
+  transactionId: varchar("transaction_id").notNull().references(() => transactions.id),
   agentId: varchar("agent_id").notNull().references(() => users.id),
   action: text("action").notNull(), // 'started', 'ended', 'upsell_offered', 'upsell_accepted', 'upsell_declined'
   notes: text("notes"),
@@ -85,21 +99,18 @@ export const callsRelations = relations(calls, ({ one, many }) => ({
   callHistory: many(callHistory),
 }));
 
-export const transactionsRelations = relations(transactions, ({ one }) => ({
-  call: one(calls, {
-    fields: [transactions.callId],
-    references: [calls.id],
-  }),
+export const transactionsRelations = relations(transactions, ({ one, many }) => ({
   agent: one(users, {
     fields: [transactions.agentId],
     references: [users.id],
   }),
+  callHistory: many(callHistory),
 }));
 
 export const callHistoryRelations = relations(callHistory, ({ one }) => ({
-  call: one(calls, {
-    fields: [callHistory.callId],
-    references: [calls.id],
+  transaction: one(transactions, {
+    fields: [callHistory.transactionId],
+    references: [transactions.id],
   }),
   agent: one(users, {
     fields: [callHistory.agentId],
@@ -135,6 +146,7 @@ export const insertCallSchema = createInsertSchema(calls).omit({
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertCallHistorySchema = createInsertSchema(callHistory).omit({

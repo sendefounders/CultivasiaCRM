@@ -160,6 +160,8 @@ export function registerRoutes(app: Express): Server {
       }
 
       const csvText = req.file.buffer.toString('utf8');
+      const callType = req.body.callType || 'confirmation'; // Get call type from form data
+      
       const parsed = Papa.parse(csvText, { 
         header: true, 
         skipEmptyLines: true,
@@ -187,8 +189,8 @@ export function registerRoutes(app: Express): Server {
         try {
           const row = parsed.data[i] as any;
           
-          // Map CSV columns to call data
-          const callData = {
+          // Map CSV columns to transaction data (now primary entity)
+          const transactionData = {
             date: new Date(row.date || row.DATE),
             customerName: row.name || row.NAME || '',
             phone: row.phone || row.PHONE || '',
@@ -198,12 +200,14 @@ export function registerRoutes(app: Express): Server {
             currentPrice: String(parseFloat(row.price || row.PRICE || '0')),
             shippingFee: String(parseFloat(row.sf || row.SF || '0')),
             address: row.address || row.ADDRESS || '',
-            callType: 'confirmation' as const,
+            callType: callType as 'confirmation' | 'promo',
             agentId: agents.length > 0 ? agents[agentIndex % agents.length].id : null,
+            status: 'new' as const,
+            isUpsell: false, // CSV imports are original orders, not upsells
           };
 
           // Validate required fields
-          if (!callData.customerName || !callData.phone || !callData.orderSku) {
+          if (!transactionData.customerName || !transactionData.phone || !transactionData.orderSku) {
             results.errors.push({
               row: i + 1,
               message: "Missing required fields (name, phone, order)",
@@ -213,13 +217,13 @@ export function registerRoutes(app: Express): Server {
           }
 
           // Check for duplicates
-          const duplicate = await storage.checkDuplicateCall(callData.phone, callData.date);
+          const duplicate = await storage.checkDuplicateTransaction(transactionData.phone, transactionData.date);
           if (duplicate) {
             results.duplicates++;
             continue;
           }
 
-          await storage.createCall(callData);
+          await storage.createTransaction(transactionData);
           results.success++;
           agentIndex++;
 
@@ -238,13 +242,47 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Transactions API
+  // Transactions API (now primary entity for call list)
   app.get("/api/transactions", requireAuth, async (req, res) => {
     try {
-      const transactions = await storage.getAllTransactions();
+      const filters = {
+        dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined,
+        dateTo: req.query.dateTo ? new Date(req.query.dateTo as string) : undefined,
+        status: req.query.status as string,
+        agentId: req.query.agentId as string,
+        callType: req.query.callType as string,
+        search: req.query.search as string,
+        isUpsell: req.query.isUpsell ? req.query.isUpsell === 'true' : undefined,
+      };
+
+      // Filter out undefined values
+      Object.keys(filters).forEach(key => 
+        filters[key as keyof typeof filters] === undefined && delete filters[key as keyof typeof filters]
+      );
+
+      const transactions = await storage.getAllTransactions(filters);
       res.json(transactions);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  app.put("/api/transactions/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = insertTransactionSchema.partial().parse(req.body);
+      const transaction = await storage.updateTransaction(id, updates);
+      
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      res.json(transaction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update transaction" });
     }
   });
 

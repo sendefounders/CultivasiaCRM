@@ -27,7 +27,7 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined>;
 
-  // Calls
+  // Calls (legacy - keeping for backward compatibility)
   getAllCalls(filters?: CallFilters): Promise<Call[]>;
   getCall(id: string): Promise<Call | undefined>;
   createCall(call: InsertCall): Promise<Call>;
@@ -36,14 +36,18 @@ export interface IStorage {
   getCallsByAgent(agentId: string): Promise<Call[]>;
   checkDuplicateCall(phone: string, date: Date): Promise<Call | undefined>;
 
-  // Transactions
-  getAllTransactions(): Promise<Transaction[]>;
+  // Transactions (now primary entity)
+  getAllTransactions(filters?: TransactionFilters): Promise<Transaction[]>;
+  getTransaction(id: string): Promise<Transaction | undefined>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
-  getTransactionsByCall(callId: string): Promise<Transaction[]>;
+  updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined>;
+  assignTransactionToAgent(transactionId: string, agentId: string): Promise<Transaction | undefined>;
   getTransactionsByAgent(agentId: string): Promise<Transaction[]>;
+  checkDuplicateTransaction(phone: string, date: Date): Promise<Transaction | undefined>;
 
-  // Call History
+  // Call History (now references transactions)
   getCallHistory(callId: string): Promise<CallHistory[]>;
+  getTransactionHistory(transactionId: string): Promise<CallHistory[]>;
   addCallHistory(history: InsertCallHistory): Promise<CallHistory>;
 
   // Analytics
@@ -60,6 +64,16 @@ export interface CallFilters {
   agentId?: string;
   callType?: string;
   search?: string;
+}
+
+export interface TransactionFilters {
+  dateFrom?: Date;
+  dateTo?: Date;
+  status?: string;
+  agentId?: string;
+  callType?: string;
+  search?: string;
+  isUpsell?: boolean;
 }
 
 export interface DashboardStats {
@@ -215,17 +229,86 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Transactions
-  async getAllTransactions(): Promise<Transaction[]> {
-    return await db.select().from(transactions).orderBy(desc(transactions.createdAt));
+  async getAllTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
+    let query = db.select().from(transactions);
+    
+    if (filters) {
+      const conditions = [];
+      
+      if (filters.dateFrom) {
+        conditions.push(gte(transactions.date, filters.dateFrom));
+      }
+      if (filters.dateTo) {
+        conditions.push(lte(transactions.date, filters.dateTo));
+      }
+      if (filters.status) {
+        conditions.push(eq(transactions.status, filters.status));
+      }
+      if (filters.agentId) {
+        conditions.push(eq(transactions.agentId, filters.agentId));
+      }
+      if (filters.callType) {
+        conditions.push(eq(transactions.callType, filters.callType));
+      }
+      if (filters.search) {
+        conditions.push(
+          sql`${transactions.customerName} ILIKE ${'%' + filters.search + '%'} OR ${transactions.phone} ILIKE ${'%' + filters.search + '%'}`
+        );
+      }
+      if (filters.isUpsell !== undefined) {
+        conditions.push(eq(transactions.isUpsell, filters.isUpsell));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+    }
+    
+    return await query.orderBy(desc(transactions.createdAt));
+  }
+  
+  async getTransaction(id: string): Promise<Transaction | undefined> {
+    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
+    return transaction || undefined;
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
     const [newTransaction] = await db.insert(transactions).values(transaction).returning();
     return newTransaction;
   }
+  
+  async updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined> {
+    const [updatedTransaction] = await db.update(transactions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(transactions.id, id))
+      .returning();
+    return updatedTransaction || undefined;
+  }
+  
+  async assignTransactionToAgent(transactionId: string, agentId: string): Promise<Transaction | undefined> {
+    return await this.updateTransaction(transactionId, { agentId });
+  }
+  
+  async checkDuplicateTransaction(phone: string, date: Date): Promise<Transaction | undefined> {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
 
+    const [transaction] = await db.select().from(transactions)
+      .where(and(
+        eq(transactions.phone, phone),
+        gte(transactions.date, dayStart),
+        lte(transactions.date, dayEnd)
+      ));
+    return transaction || undefined;
+  }
+
+  // Legacy method - transactions no longer reference calls
   async getTransactionsByCall(callId: string): Promise<Transaction[]> {
-    return await db.select().from(transactions).where(eq(transactions.callId, callId));
+    // This method is kept for backward compatibility but returns empty array
+    // since transactions are now the primary entity
+    return [];
   }
 
   async getTransactionsByAgent(agentId: string): Promise<Transaction[]> {
@@ -234,7 +317,12 @@ export class DatabaseStorage implements IStorage {
 
   // Call History
   async getCallHistory(callId: string): Promise<CallHistory[]> {
-    return await db.select().from(callHistory).where(eq(callHistory.callId, callId)).orderBy(desc(callHistory.createdAt));
+    // Legacy method - kept for backward compatibility
+    return [];
+  }
+  
+  async getTransactionHistory(transactionId: string): Promise<CallHistory[]> {
+    return await db.select().from(callHistory).where(eq(callHistory.transactionId, transactionId)).orderBy(desc(callHistory.createdAt));
   }
 
   async addCallHistory(history: InsertCallHistory): Promise<CallHistory> {
@@ -242,75 +330,75 @@ export class DatabaseStorage implements IStorage {
     return newHistory;
   }
 
-  // Analytics
+  // Analytics (now based on transactions as primary entity)
   async getDashboardStats(agentId?: string): Promise<DashboardStats> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Base conditions
+    // Base conditions for transactions
     const baseConditions = [
-      gte(calls.date, today),
-      lte(calls.date, tomorrow)
+      gte(transactions.date, today),
+      lte(transactions.date, tomorrow)
     ];
 
     if (agentId) {
-      baseConditions.push(eq(calls.agentId, agentId));
+      baseConditions.push(eq(transactions.agentId, agentId));
     }
 
-    // Total calls today
+    // Total calls today (from transactions)
     const [callsResult] = await db.select({ count: count() })
-      .from(calls)
+      .from(transactions)
       .where(and(...baseConditions));
 
     // Successful upsells today
     const [upsellsResult] = await db.select({ count: count() })
       .from(transactions)
-      .leftJoin(calls, eq(transactions.callId, calls.id))
       .where(and(
-        gte(transactions.createdAt, today),
-        lte(transactions.createdAt, tomorrow),
+        gte(transactions.date, today),
+        lte(transactions.date, tomorrow),
         eq(transactions.isUpsell, true),
         ...(agentId ? [eq(transactions.agentId, agentId)] : [])
       ));
 
-    // Revenue today
+    // Revenue today (from upsells only)
     const [revenueResult] = await db.select({ 
       total: sum(transactions.revenue) 
     })
       .from(transactions)
-      .leftJoin(calls, eq(transactions.callId, calls.id))
       .where(and(
-        gte(transactions.createdAt, today),
-        lte(transactions.createdAt, tomorrow),
+        gte(transactions.date, today),
+        lte(transactions.date, tomorrow),
+        eq(transactions.isUpsell, true),
         ...(agentId ? [eq(transactions.agentId, agentId)] : [])
       ));
 
-    // Calls by status
+    // Calls by status (from transactions)
     const statusResults = await db.select({
-      status: calls.status,
+      status: transactions.status,
       count: count()
     })
-      .from(calls)
+      .from(transactions)
       .where(and(...baseConditions))
-      .groupBy(calls.status);
+      .groupBy(transactions.status);
 
     // Revenue by day (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const revenueByDay = await db.select({
-      date: sql<string>`DATE(${transactions.createdAt})`,
+      date: sql<string>`DATE(${transactions.date})`,
       revenue: sum(transactions.revenue)
     })
       .from(transactions)
       .where(and(
-        gte(transactions.createdAt, sevenDaysAgo),
+        gte(transactions.date, sevenDaysAgo),
+        eq(transactions.isUpsell, true),
         ...(agentId ? [eq(transactions.agentId, agentId)] : [])
       ))
-      .groupBy(sql`DATE(${transactions.createdAt})`)
-      .orderBy(sql`DATE(${transactions.createdAt})`);
+      .groupBy(sql`DATE(${transactions.date})`)
+      .orderBy(sql`DATE(${transactions.date})`);
 
     const totalCallsToday = callsResult.count || 0;
     const successfulUpsells = upsellsResult.count || 0;
