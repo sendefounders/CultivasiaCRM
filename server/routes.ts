@@ -245,10 +245,20 @@ export function registerRoutes(app: Express): Server {
   // Transactions API (now primary entity for call list)
   app.get("/api/transactions", requireAuth, async (req, res) => {
     try {
+      // Handle special cases for status filter
+      let statusFilter: string | undefined = req.query.status as string;
+      if (statusFilter === 'purchased') {
+        // "Purchased" means completed calls (customers who made purchases)
+        statusFilter = 'completed';
+      } else if (statusFilter === 'all') {
+        // "All statuses" means no status filter
+        statusFilter = undefined;
+      }
+      
       const filters = {
         dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined,
         dateTo: req.query.dateTo ? new Date(req.query.dateTo as string) : undefined,
-        status: req.query.status as string,
+        status: statusFilter,
         agentId: req.query.agentId as string,
         callType: req.query.callType as string,
         search: req.query.search as string,
