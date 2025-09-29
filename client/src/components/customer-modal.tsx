@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Phone, PhoneOff, AlertTriangle, Calendar } from "lucide-react";
+import { Phone, PhoneOff, AlertTriangle, Calendar, ShoppingCart } from "lucide-react";
 import { Transaction, CallHistory } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -17,6 +17,7 @@ interface CustomerModalProps {
   onMarkCallback: (callId: string, remarks?: string, duration?: number) => void;
   onAnswered: (callId: string) => void;
   onStopTimer: () => number; // Returns the current timer duration
+  onNewOrder?: (callId: string) => void; // Optional new order/upselling handler
   callTimer?: string;
 }
 
@@ -29,6 +30,7 @@ export function CustomerModal({
   onMarkCallback,
   onAnswered,
   onStopTimer,
+  onNewOrder,
   callTimer
 }: CustomerModalProps) {
   const [showRemarksInput, setShowRemarksInput] = useState(false);
@@ -51,7 +53,8 @@ export function CustomerModal({
 
   // Helper to determine if call can still be acted upon
   const isCallActionable = () => {
-    return call && ['new', 'in_progress', 'callback'].includes(call.status);
+    // Allow actions on all statuses except 'completed' - agents should be able to reopen calls
+    return call && call.status !== 'completed';
   };
 
   const handleAnsweredClick = () => {
@@ -86,6 +89,13 @@ export function CustomerModal({
     setCapturedDuration(duration);
     setRemarksAction('unattended');
     setShowRemarksInput(true);
+  };
+
+  const handleNewOrderClick = () => {
+    // Trigger new order/upselling workflow
+    if (call && onNewOrder) {
+      onNewOrder(call.id);
+    }
   };
 
   const handleSaveRemarks = () => {
@@ -338,34 +348,49 @@ export function CustomerModal({
                 </div>
               )}
 
-              {/* Answered Phase - Show End Call, Callback, Unattended */}
+              {/* Answered Phase - Show New Order, End Call, Callback, Unattended */}
               {callPhase === 'answered' && (
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleEndCallClick}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    data-testid="button-end-call"
-                  >
-                    <PhoneOff className="h-4 w-4 mr-2" />
-                    End Call
-                  </Button>
-                  <Button
-                    onClick={handleCallbackClick}
-                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
-                    data-testid="button-callback-answered"
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Callback
-                  </Button>
-                  <Button
-                    onClick={handleUnattendedClick}
-                    variant="secondary"
-                    className="flex-1 bg-red-200 hover:bg-red-300 text-red-800"
-                    data-testid="button-unattended-answered"
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Unattended
-                  </Button>
+                <div className="space-y-3">
+                  {/* First row: New Order button for upselling */}
+                  <div className="flex space-x-3">
+                    <Button
+                      onClick={handleNewOrderClick}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      data-testid="button-new-order"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      New Order
+                    </Button>
+                  </div>
+                  
+                  {/* Second row: Call end options */}
+                  <div className="flex space-x-3">
+                    <Button
+                      onClick={handleEndCallClick}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      data-testid="button-end-call"
+                    >
+                      <PhoneOff className="h-4 w-4 mr-2" />
+                      End Call
+                    </Button>
+                    <Button
+                      onClick={handleCallbackClick}
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                      data-testid="button-callback-answered"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Callback
+                    </Button>
+                    <Button
+                      onClick={handleUnattendedClick}
+                      variant="secondary"
+                      className="flex-1 bg-red-200 hover:bg-red-300 text-red-800"
+                      data-testid="button-unattended-answered"
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Unattended
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

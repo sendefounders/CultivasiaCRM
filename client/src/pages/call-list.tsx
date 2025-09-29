@@ -262,13 +262,37 @@ export default function CallList() {
     return callTimer;
   };
 
+  const handleNewOrder = (callId: string) => {
+    // Stop timer and capture duration when New Order is clicked
+    const duration = handleStopTimer();
+    
+    // Find the call data
+    const call = calls?.find(c => c.id === callId);
+    if (!call) {
+      toast({
+        title: "Error",
+        description: "Call data not found. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Always proceed to upsell modal - it will handle missing product data gracefully
+    setShowCustomerModal(false);
+    setShowUpsellModal(true);
+  };
 
-  const handleAcceptUpsell = (callId: string, newProductSku: string) => {
+
+  const handleAcceptUpsell = (callId: string, newProductSku: string, customPrice?: number) => {
     const call = calls?.find(c => c.id === callId);
     const newProduct = products?.find(p => p.sku === newProductSku);
-    const currentProduct = products?.find(p => p.sku === call?.orderSku);
     
-    if (call && newProduct && currentProduct) {
+    if (call) {
+      // Use custom price if provided (manual entry), otherwise use product price
+      const finalPrice = customPrice !== undefined 
+        ? customPrice.toString() 
+        : newProduct?.price || '0';
+      
       // Update existing transaction with upsell information
       updateCallMutation.mutate({
         callId: call.id,
@@ -277,15 +301,29 @@ export default function CallList() {
           originalOrderSku: call.orderSku,
           originalPrice: call.currentPrice,
           // Update to new product
-          orderSku: newProduct.sku,
-          currentPrice: newProduct.price,
+          orderSku: newProductSku,
+          currentPrice: finalPrice,
           // Calculate revenue and mark as upsell
-          revenue: (Number(newProduct.price) - Number(call.currentPrice)).toString(),
+          revenue: (Number(finalPrice) - Number(call.currentPrice)).toString(),
           isUpsell: true,
           status: 'completed'
         }
       });
+      
+      const productName = newProduct?.name || newProductSku;
+      toast({
+        title: "Upsell Accepted",
+        description: `Successfully upsold ${call.customerName} to ${productName}`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Call data not found. Please try again.",
+        variant: "destructive",
+      });
     }
+    
+    setShowUpsellModal(false);
   };
 
   const handleDeclineUpsell = (callId: string) => {
@@ -500,6 +538,7 @@ export default function CallList() {
           onMarkCallback={handleMarkCallback}
           onAnswered={handleAnswered}
           onStopTimer={handleStopTimer}
+          onNewOrder={handleNewOrder}
           callTimer={formatCallTimer(callTimer)}
         />
 
