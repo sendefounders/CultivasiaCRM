@@ -273,16 +273,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const [newTransaction] = await db.insert(transactions).values(transaction).returning();
+    // Enforce data consistency for new transactions
+    const consistentTransaction = this.enforceStatusTimestampConsistency(transaction);
+    
+    const [newTransaction] = await db.insert(transactions).values(consistentTransaction).returning();
     return newTransaction;
   }
   
   async updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined> {
+    // Enforce data consistency between status and timestamps
+    const consistentUpdates = this.enforceStatusTimestampConsistency(updates);
+    
     const [updatedTransaction] = await db.update(transactions)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...consistentUpdates, updatedAt: new Date() })
       .where(eq(transactions.id, id))
       .returning();
     return updatedTransaction || undefined;
+  }
+
+  private enforceStatusTimestampConsistency(updates: Partial<InsertTransaction>): Partial<InsertTransaction> {
+    const result = { ...updates };
+    
+    // If status is being set to 'new', clear all call-related timestamps
+    if (updates.status === 'new') {
+      result.callStartedAt = null;
+      result.callEndedAt = null;
+      result.callDuration = null;
+    }
+    
+    // If status is being set to 'in_progress', ensure callStartedAt is set
+    if (updates.status === 'in_progress' && !updates.callStartedAt) {
+      result.callStartedAt = new Date();
+    }
+    
+    // If status is being set to completed/called/unattended/callback, ensure callEndedAt is set
+    if (['called', 'completed', 'unattended', 'callback'].includes(updates.status as string)) {
+      if (!updates.callEndedAt) {
+        result.callEndedAt = new Date();
+      }
+    }
+    
+    return result;
   }
   
   async assignTransactionToAgent(transactionId: string, agentId: string): Promise<Transaction | undefined> {
