@@ -8,6 +8,24 @@ The system provides comprehensive call management capabilities including call tr
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+## Data Consistency Fix (Sept 29, 2025)
+Implemented critical backend data consistency enforcement to resolve the "Answered" button disappearing issue:
+
+**Problem**: Agents were experiencing an intermittent bug where the "Answered" button would disappear from new calls, preventing them from answering calls and disrupting their workflow.
+
+**Root Cause**: Inconsistent database state where transactions had status='new' but contained stale timestamp data (call_started_at, call_ended_at, call_duration), causing the UI to incorrectly assume calls were already in progress.
+
+**Solution**: Added `enforceStatusTimestampConsistency()` method in backend storage layer that automatically maintains data integrity:
+- When status='new': Clears all call timing fields to ensure clean state
+- When status='in_progress': Ensures call_started_at is populated
+- When status='completed' states: Ensures call_ended_at is populated
+- Applied to both `createTransaction()` and `updateTransaction()` methods
+- Prevents inconsistent data from CSV imports and manual operations
+
+**Result**: Eliminated the "Answered" button bug completely. All new calls now consistently show the "Answered" button, and agents can reliably handle multiple consecutive calls without UI state issues.
+
 # System Architecture
 
 ## Frontend Architecture
