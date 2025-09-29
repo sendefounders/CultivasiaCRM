@@ -202,8 +202,10 @@ export default function CallList() {
           revenue: call.revenue,
           isUpsell: call.isUpsell
         }),
-        // Update call completion data - use 'completed' if there's an upsell, 'called' otherwise
-        status: call?.isUpsell ? 'completed' : 'called',
+        // Set isUpsell to true if there's any order data (regardless of cache state)
+        ...(call?.originalOrderSku && { isUpsell: true }),
+        // Update call completion data - use 'completed' if there's order data, 'called' otherwise
+        status: call?.originalOrderSku ? 'completed' : 'called',
         callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
