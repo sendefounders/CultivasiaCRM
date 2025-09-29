@@ -428,7 +428,7 @@ export function CustomerModal({
             {/* Action Buttons */}
             {isCallActionable() && (
               <div className="space-y-4">
-                {/* Initial Call Phase - Show Answered, Unattended, Callback */}
+                {/* Initial Call Phase - Show Answered, Unattended, Callback, and New Order */}
                 {callPhase === 'initial' && (
                   <div>
                     <h4 className="font-semibold text-foreground mb-3">Call Actions</h4>
@@ -441,6 +441,19 @@ export function CustomerModal({
                         <Phone className="h-4 w-4 mr-2" />
                         Answered
                       </Button>
+                      
+                      {/* New Order Section - Available in initial phase too */}
+                      {!showUpsellSection ? (
+                        <Button
+                          onClick={handleNewOrderClick}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          data-testid="button-new-order-initial"
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Add Order
+                        </Button>
+                      ) : null}
+                      
                       <Button
                         onClick={handleUnattendedClick}
                         variant="secondary"
@@ -463,13 +476,156 @@ export function CustomerModal({
                   </div>
                 )}
 
+                {/* Upsell Section - Available in both phases */}
+                {showUpsellSection && (
+                  <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <h5 className="font-medium text-foreground">Add New Order</h5>
+                    
+                    {/* Current Order Info - Compact */}
+                    <div className="p-2 bg-white rounded text-xs">
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Customer:</span>
+                          <span className="font-medium">{call?.customerName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Current SKU:</span>
+                          <span className="font-medium">{call?.orderSku}</span>
+                        </div>
+                        {currentProduct && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Price:</span>
+                            <span className="font-medium">{formatCurrency(Number(currentProduct.price))}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Upsell Options */}
+                    {hasCompleteProductData && !manualMode && (
+                      <>
+                        {/* Suggested Upsell */}
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <h5 className="font-medium text-green-800 mb-2">Suggested Upsell</h5>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Product SKU</p>
+                              <p className="font-bold text-green-700">{suggestedProduct!.sku}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Product Name</p>
+                              <p className="font-medium">{suggestedProduct!.name}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">New Price</p>
+                              <p className="font-bold text-green-700">{formatCurrency(Number(suggestedProduct!.price))}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Additional Revenue</p>
+                              <p className="font-bold text-green-600">+{formatCurrency(priceDifference)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Suggested Upsell Buttons */}
+                        <div className="flex space-x-2">
+                          <Button
+                            onClick={handleAcceptSuggested}
+                            className="flex-1"
+                            data-testid="button-accept-suggested"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Accept Suggested
+                          </Button>
+                          <Button
+                            onClick={() => setManualMode(true)}
+                            variant="outline"
+                            className="flex-1"
+                            data-testid="button-manual-entry"
+                          >
+                            Manual Entry
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {(manualMode || !hasCompleteProductData) && (
+                      <>
+                        {/* Manual Entry Form */}
+                        <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                          <h5 className="font-medium text-orange-800 mb-3">Manual Order Entry</h5>
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor="new-sku">Product SKU</Label>
+                              <Input
+                                id="new-sku"
+                                value={newProductSku}
+                                onChange={(e) => setNewProductSku(e.target.value)}
+                                placeholder="Enter product SKU..."
+                                data-testid="input-new-sku"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="new-price">Price (PHP)</Label>
+                              <Input
+                                id="new-price"
+                                type="number"
+                                value={newPrice}
+                                onChange={(e) => setNewPrice(e.target.value)}
+                                placeholder="Enter price..."
+                                data-testid="input-new-price"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Manual Entry Buttons */}
+                        <div className="flex space-x-2">
+                          <Button
+                            onClick={handleAcceptManual}
+                            disabled={!newProductSku.trim() || !newPrice.trim()}
+                            className="flex-1"
+                            data-testid="button-accept-manual"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Create Order
+                          </Button>
+                          {hasCompleteProductData && (
+                            <Button
+                              onClick={() => setManualMode(false)}
+                              variant="outline"
+                              className="flex-1"
+                              data-testid="button-back-suggested"
+                            >
+                              Back to Suggested
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Cancel Button */}
+                    <div className="pt-2 border-t">
+                      <Button
+                        onClick={handleCancelUpsell}
+                        variant="secondary"
+                        className="w-full"
+                        data-testid="button-cancel-upsell"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
               {/* Answered Phase - Show New Order, End Call, Callback, Unattended */}
               {callPhase === 'answered' && (
                 <div className="space-y-4">
                   <h4 className="font-semibold text-foreground">Call Actions</h4>
                   
                   {/* New Order Section */}
-                  {!showUpsellSection ? (
+                  {!showUpsellSection && (
                     <Button
                       onClick={handleNewOrderClick}
                       className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -478,146 +634,6 @@ export function CustomerModal({
                       <ShoppingCart className="h-4 w-4 mr-2" />
                       New Order
                     </Button>
-                  ) : (
-                    <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <h5 className="font-medium text-foreground">Add New Order</h5>
-                      
-                      {/* Current Order Info - Compact */}
-                      <div className="p-2 bg-white rounded text-xs">
-                        <div className="space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Customer:</span>
-                            <span className="font-medium">{call?.customerName}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Current SKU:</span>
-                            <span className="font-medium">{call?.orderSku}</span>
-                          </div>
-                          {currentProduct && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Price:</span>
-                              <span className="font-medium">{formatCurrency(Number(currentProduct.price))}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Upsell Options */}
-                      {hasCompleteProductData && !manualMode && (
-                        <>
-                          {/* Suggested Upsell */}
-                          <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                            <h5 className="font-medium text-green-800 mb-2">Suggested Upsell</h5>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div>
-                                <p className="text-muted-foreground">Product SKU</p>
-                                <p className="font-bold text-green-700">{suggestedProduct!.sku}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Product Name</p>
-                                <p className="font-medium">{suggestedProduct!.name}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">New Price</p>
-                                <p className="font-bold text-green-700">{formatCurrency(Number(suggestedProduct!.price))}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Additional Revenue</p>
-                                <p className="font-bold text-green-600">+{formatCurrency(priceDifference)}</p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Suggested Upsell Buttons */}
-                          <div className="flex space-x-2">
-                            <Button
-                              onClick={handleAcceptSuggested}
-                              className="flex-1"
-                              data-testid="button-accept-suggested"
-                            >
-                              <Check className="h-4 w-4 mr-2" />
-                              Accept Suggested
-                            </Button>
-                            <Button
-                              onClick={() => setManualMode(true)}
-                              variant="outline"
-                              className="flex-1"
-                              data-testid="button-manual-entry"
-                            >
-                              Manual Entry
-                            </Button>
-                          </div>
-                        </>
-                      )}
-
-                      {(manualMode || !hasCompleteProductData) && (
-                        <>
-                          {/* Manual Entry Form */}
-                          <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                            <h5 className="font-medium text-orange-800 mb-3">Manual Order Entry</h5>
-                            <div className="space-y-3">
-                              <div>
-                                <Label htmlFor="new-sku">Product SKU</Label>
-                                <Input
-                                  id="new-sku"
-                                  value={newProductSku}
-                                  onChange={(e) => setNewProductSku(e.target.value)}
-                                  placeholder="Enter product SKU..."
-                                  data-testid="input-new-sku"
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="new-price">Price (PHP)</Label>
-                                <Input
-                                  id="new-price"
-                                  type="number"
-                                  value={newPrice}
-                                  onChange={(e) => setNewPrice(e.target.value)}
-                                  placeholder="Enter price..."
-                                  data-testid="input-new-price"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Manual Entry Buttons */}
-                          <div className="flex space-x-2">
-                            <Button
-                              onClick={handleAcceptManual}
-                              disabled={!newProductSku.trim() || !newPrice.trim()}
-                              className="flex-1"
-                              data-testid="button-accept-manual"
-                            >
-                              <Check className="h-4 w-4 mr-2" />
-                              Create Order
-                            </Button>
-                            {hasCompleteProductData && (
-                              <Button
-                                onClick={() => setManualMode(false)}
-                                variant="outline"
-                                className="flex-1"
-                                data-testid="button-back-suggested"
-                              >
-                                Back to Suggested
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      {/* Cancel Button */}
-                      <div className="pt-2 border-t">
-                        <Button
-                          onClick={handleCancelUpsell}
-                          variant="secondary"
-                          className="w-full"
-                          data-testid="button-cancel-upsell"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
                   )}
                   
                   {/* Call End Options */}
