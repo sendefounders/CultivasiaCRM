@@ -187,9 +187,22 @@ export default function CallList() {
     // Use provided duration or current timer value
     const finalDuration = duration !== undefined ? duration : callTimer;
     
+    // Get the current call data to preserve order information
+    const call = calls?.find(c => c.id === callId);
+    
     updateCallMutation.mutate({
       callId,
       updates: { 
+        // Preserve all existing order data if it exists
+        ...(call?.originalOrderSku && {
+          originalOrderSku: call.originalOrderSku,
+          originalPrice: call.originalPrice,
+          orderSku: call.orderSku,
+          currentPrice: call.currentPrice,
+          revenue: call.revenue,
+          isUpsell: call.isUpsell
+        }),
+        // Update call completion data
         status: 'called',
         callEndedAt: new Date(),
         callDuration: finalDuration,
@@ -203,9 +216,22 @@ export default function CallList() {
     // Use provided duration or current timer value
     const finalDuration = duration !== undefined ? duration : callTimer;
     
+    // Get the current call data to preserve order information
+    const call = calls?.find(c => c.id === callId);
+    
     updateCallMutation.mutate({
       callId,
       updates: { 
+        // Preserve all existing order data if it exists
+        ...(call?.originalOrderSku && {
+          originalOrderSku: call.originalOrderSku,
+          originalPrice: call.originalPrice,
+          orderSku: call.orderSku,
+          currentPrice: call.currentPrice,
+          revenue: call.revenue,
+          isUpsell: call.isUpsell
+        }),
+        // Update call completion data
         status: 'unattended',
         callEndedAt: new Date(),
         callDuration: finalDuration,
@@ -219,9 +245,22 @@ export default function CallList() {
     // Use provided duration or current timer value
     const finalDuration = duration !== undefined ? duration : callTimer;
     
+    // Get the current call data to preserve order information
+    const call = calls?.find(c => c.id === callId);
+    
     updateCallMutation.mutate({
       callId,
       updates: { 
+        // Preserve all existing order data if it exists
+        ...(call?.originalOrderSku && {
+          originalOrderSku: call.originalOrderSku,
+          originalPrice: call.originalPrice,
+          orderSku: call.orderSku,
+          currentPrice: call.currentPrice,
+          revenue: call.revenue,
+          isUpsell: call.isUpsell
+        }),
+        // Update call completion data
         status: 'callback',
         callEndedAt: new Date(),
         callDuration: finalDuration,
