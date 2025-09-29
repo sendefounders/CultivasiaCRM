@@ -185,17 +185,16 @@ export default function CallList() {
     setShowCustomerModal(true);
   };
 
-  const handleEndCall = (callId: string, remarks?: string) => {
-    // Stop timer and calculate duration
-    setIsTimerRunning(false);
-    const duration = callTimer; // Duration in seconds
+  const handleEndCall = (callId: string, remarks?: string, duration?: number) => {
+    // Use provided duration or current timer value
+    const finalDuration = duration !== undefined ? duration : callTimer;
     
     updateCallMutation.mutate({
       callId,
       updates: { 
         status: 'called',
         callEndedAt: new Date().toISOString(),
-        callDuration: duration,
+        callDuration: finalDuration,
         callRemarks: remarks || null
       }
     });
@@ -207,34 +206,32 @@ export default function CallList() {
     }, 300);
   };
 
-  const handleMarkUnattended = (callId: string, remarks?: string) => {
-    // Stop timer and calculate duration
-    setIsTimerRunning(false);
-    const duration = callTimer; // Duration in seconds
+  const handleMarkUnattended = (callId: string, remarks?: string, duration?: number) => {
+    // Use provided duration or current timer value
+    const finalDuration = duration !== undefined ? duration : callTimer;
     
     updateCallMutation.mutate({
       callId,
       updates: { 
         status: 'unattended',
         callEndedAt: new Date().toISOString(),
-        callDuration: duration,
+        callDuration: finalDuration,
         callRemarks: remarks || null
       }
     });
     setShowCustomerModal(false);
   };
 
-  const handleMarkCallback = (callId: string, remarks?: string) => {
-    // Stop timer and calculate duration
-    setIsTimerRunning(false);
-    const duration = callTimer; // Duration in seconds
+  const handleMarkCallback = (callId: string, remarks?: string, duration?: number) => {
+    // Use provided duration or current timer value
+    const finalDuration = duration !== undefined ? duration : callTimer;
     
     updateCallMutation.mutate({
       callId,
       updates: { 
         status: 'callback',
         callEndedAt: new Date().toISOString(),
-        callDuration: duration,
+        callDuration: finalDuration,
         callRemarks: remarks || null
       }
     });
@@ -257,6 +254,12 @@ export default function CallList() {
         agentId: user?.id
       }
     });
+  };
+
+  const handleStopTimer = () => {
+    // Stop timer and return current duration
+    setIsTimerRunning(false);
+    return callTimer;
   };
 
 
@@ -496,6 +499,7 @@ export default function CallList() {
           onMarkUnattended={handleMarkUnattended}
           onMarkCallback={handleMarkCallback}
           onAnswered={handleAnswered}
+          onStopTimer={handleStopTimer}
           callTimer={formatCallTimer(callTimer)}
         />
 

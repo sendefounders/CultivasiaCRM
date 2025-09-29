@@ -12,10 +12,11 @@ interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   call: Transaction | null;
-  onEndCall: (callId: string, remarks?: string) => void;
-  onMarkUnattended: (callId: string, remarks?: string) => void;
-  onMarkCallback: (callId: string, remarks?: string) => void;
+  onEndCall: (callId: string, remarks?: string, duration?: number) => void;
+  onMarkUnattended: (callId: string, remarks?: string, duration?: number) => void;
+  onMarkCallback: (callId: string, remarks?: string, duration?: number) => void;
   onAnswered: (callId: string) => void;
+  onStopTimer: () => number; // Returns the current timer duration
   callTimer?: string;
 }
 
@@ -27,6 +28,7 @@ export function CustomerModal({
   onMarkUnattended,
   onMarkCallback,
   onAnswered,
+  onStopTimer,
   callTimer
 }: CustomerModalProps) {
   const [showRemarksInput, setShowRemarksInput] = useState(false);
@@ -36,6 +38,7 @@ export function CustomerModal({
     call?.status === 'in_progress' ? 'answered' : 'initial'
   );
   const [remarksAction, setRemarksAction] = useState<'end_call' | 'callback' | 'unattended'>('end_call');
+  const [capturedDuration, setCapturedDuration] = useState<number | null>(null);
 
   // Sync callPhase with call status changes
   useEffect(() => {
@@ -62,16 +65,25 @@ export function CustomerModal({
   };
 
   const handleEndCallClick = () => {
+    // Stop timer and capture duration when End Call is clicked
+    const duration = onStopTimer();
+    setCapturedDuration(duration);
     setRemarksAction('end_call');
     setShowRemarksInput(true);
   };
 
   const handleCallbackClick = () => {
+    // Stop timer and capture duration when Callback is clicked
+    const duration = onStopTimer();
+    setCapturedDuration(duration);
     setRemarksAction('callback');
     setShowRemarksInput(true);
   };
 
   const handleUnattendedClick = () => {
+    // Stop timer and capture duration when Unattended is clicked
+    const duration = onStopTimer();
+    setCapturedDuration(duration);
     setRemarksAction('unattended');
     setShowRemarksInput(true);
   };
@@ -80,18 +92,19 @@ export function CustomerModal({
     if (call) {
       switch (remarksAction) {
         case 'end_call':
-          onEndCall(call.id, remarks);
+          onEndCall(call.id, remarks, capturedDuration || undefined);
           break;
         case 'callback':
-          onMarkCallback(call.id, remarks);
+          onMarkCallback(call.id, remarks, capturedDuration || undefined);
           break;
         case 'unattended':
-          onMarkUnattended(call.id, remarks);
+          onMarkUnattended(call.id, remarks, capturedDuration || undefined);
           break;
       }
       setShowRemarksInput(false);
       setRemarks("");
       setCallPhase('initial');
+      setCapturedDuration(null);
     }
   };
 
