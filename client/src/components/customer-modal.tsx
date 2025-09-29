@@ -675,6 +675,48 @@ export function CustomerModal({
 
             </div>
           )}
+
+          {/* Remarks Input Section - Shows when Unattended or Callback is clicked */}
+          {showRemarksInput && (
+            <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
+              <h4 className="font-semibold text-foreground">
+                {remarksAction === 'callback' ? 'Callback Notes' : 
+                 remarksAction === 'unattended' ? 'Unattended Notes' : 'Call Notes'}
+              </h4>
+              <Textarea
+                placeholder={`Enter ${remarksAction} notes...`}
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="min-h-[100px] resize-none"
+                data-testid={`textarea-${remarksAction}-remarks`}
+              />
+              <div className="flex space-x-2">
+                <Button
+                  onClick={handleSaveRemarks}
+                  disabled={isUpdating}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                  data-testid={`button-save-${remarksAction}`}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Save {remarksAction === 'callback' ? 'Callback' : remarksAction === 'unattended' ? 'Unattended' : 'Notes'}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowRemarksInput(false);
+                    // Don't clear remarks - preserve existing call notes
+                    setCapturedDuration(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  data-testid={`button-cancel-${remarksAction}`}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
           </div>
         </div>
       </DialogContent>
