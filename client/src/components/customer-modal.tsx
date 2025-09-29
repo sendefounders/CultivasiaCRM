@@ -38,14 +38,11 @@ export function CustomerModal({
   isUpdating = false
 }: CustomerModalProps) {
   const { toast } = useToast();
-  const [showRemarksInput, setShowRemarksInput] = useState(false);
   const [remarks, setRemarks] = useState("");
   // Initialize callPhase based on call status - if in_progress, skip to answered phase
   const [callPhase, setCallPhase] = useState<'initial' | 'answered'>(
     call?.status === 'in_progress' ? 'answered' : 'initial'
   );
-  const [remarksAction, setRemarksAction] = useState<'end_call' | 'callback' | 'unattended'>('end_call');
-  const [capturedDuration, setCapturedDuration] = useState<number | null>(null);
   
   // Upsell state
   const [showUpsellSection, setShowUpsellSection] = useState(false);
@@ -128,17 +125,35 @@ export function CustomerModal({
   const handleCallbackClick = () => {
     // Stop timer and capture duration when Callback is clicked
     const duration = onStopTimer();
-    setCapturedDuration(duration);
-    setRemarksAction('callback');
-    setShowRemarksInput(true);
+    
+    if (call) {
+      // Use existing remarks from the top textarea and close modal immediately
+      onMarkCallback(call.id, remarks, duration);
+      onClose();
+      
+      // Show success toast
+      toast({
+        title: "Callback Scheduled",
+        description: "Call has been marked for callback",
+      });
+    }
   };
 
   const handleUnattendedClick = () => {
     // Stop timer and capture duration when Unattended is clicked
     const duration = onStopTimer();
-    setCapturedDuration(duration);
-    setRemarksAction('unattended');
-    setShowRemarksInput(true);
+    
+    if (call) {
+      // Use existing remarks from the top textarea and close modal immediately
+      onMarkUnattended(call.id, remarks, duration);
+      onClose();
+      
+      // Show success toast
+      toast({
+        title: "Call Marked as Unattended",
+        description: "Call has been marked as unattended",
+      });
+    }
   };
 
   const handleNewOrderClick = () => {
@@ -200,40 +215,6 @@ export function CustomerModal({
     setNewPrice("");
   };
 
-  const handleSaveRemarks = () => {
-    if (call) {
-      switch (remarksAction) {
-        case 'end_call':
-          onEndCall(call.id, remarks, capturedDuration || undefined);
-          // Close modal immediately after calling onEndCall
-          onClose();
-          break;
-        case 'callback':
-          onMarkCallback(call.id, remarks, capturedDuration || undefined);
-          // Close modal immediately after calling onMarkCallback
-          onClose();
-          break;
-        case 'unattended':
-          onMarkUnattended(call.id, remarks, capturedDuration || undefined);
-          // Close modal immediately after calling onMarkUnattended
-          onClose();
-          break;
-      }
-      setShowRemarksInput(false);
-      setRemarks("");
-      setCallPhase('initial');
-      setCapturedDuration(null);
-    }
-  };
-
-  const handleSaveUnattendedRemarks = () => {
-    if (call) {
-      onMarkUnattended(call.id, remarks);
-      setShowRemarksInput(false);
-      setRemarks("");
-      setCallPhase('initial');
-    }
-  };
   const { data: callHistory } = useQuery<CallHistory[]>({
     queryKey: ["/api/transactions", call?.id, "history"],
     queryFn: async () => {
@@ -676,46 +657,6 @@ export function CustomerModal({
             </div>
           )}
 
-          {/* Remarks Input Section - Shows when Unattended or Callback is clicked */}
-          {showRemarksInput && (
-            <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
-              <h4 className="font-semibold text-foreground">
-                {remarksAction === 'callback' ? 'Callback Notes' : 
-                 remarksAction === 'unattended' ? 'Unattended Notes' : 'Call Notes'}
-              </h4>
-              <Textarea
-                placeholder={`Enter ${remarksAction} notes...`}
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                className="min-h-[100px] resize-none"
-                data-testid={`textarea-${remarksAction}-remarks`}
-              />
-              <div className="flex space-x-2">
-                <Button
-                  onClick={handleSaveRemarks}
-                  disabled={isUpdating}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-                  data-testid={`button-save-${remarksAction}`}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Save {remarksAction === 'callback' ? 'Callback' : remarksAction === 'unattended' ? 'Unattended' : 'Notes'}
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowRemarksInput(false);
-                    // Don't clear remarks - preserve existing call notes
-                    setCapturedDuration(null);
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                  data-testid={`button-cancel-${remarksAction}`}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
 
           </div>
         </div>
