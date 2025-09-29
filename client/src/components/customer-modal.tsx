@@ -48,7 +48,7 @@ export function CustomerModal({
 
   // Helper to determine if call can still be acted upon
   const isCallActionable = () => {
-    return call && ['new', 'in_progress'].includes(call.status);
+    return call && ['new', 'in_progress', 'callback'].includes(call.status);
   };
 
   const handleAnsweredClick = () => {
