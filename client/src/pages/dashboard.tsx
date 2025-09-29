@@ -77,21 +77,6 @@ export default function Dashboard() {
               <h2 className="text-2xl font-semibold text-foreground">Dashboard</h2>
               <p className="text-sm text-muted-foreground">Monitor your telemarketing performance</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search calls, customers..."
-                  className="pl-10 w-64"
-                  data-testid="input-search"
-                />
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              </div>
-              <Button data-testid="button-new-order">
-                <Plus className="h-4 w-4 mr-2" />
-                New Order
-              </Button>
-            </div>
           </div>
         </header>
 
