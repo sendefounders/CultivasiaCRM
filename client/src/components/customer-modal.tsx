@@ -641,31 +641,31 @@ export function CustomerModal({
                   </div>
                 </div>
               )}
+
+              {/* Save Notes Button - Always visible when there are notes */}
+              {remarks.trim() && showRemarksInput && (
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleSaveRemarks}
+                    className="w-full"
+                    data-testid="button-save-remarks"
+                  >
+                    <PhoneOff className="h-4 w-4 mr-2" />
+                    {remarksAction === 'callback' ? 'Save & Mark Callback' : 
+                     remarksAction === 'unattended' ? 'Save & Mark Unattended' : 'Save & End Call'}
+                  </Button>
+                  <Button
+                    onClick={() => setShowRemarksInput(false)}
+                    variant="outline"
+                    className="w-full"
+                    data-testid="button-cancel-remarks"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-
-            {/* Save Notes Button - Always visible when there are notes */}
-            {remarks.trim() && showRemarksInput && (
-              <div className="space-y-2">
-                <Button
-                  onClick={handleSaveRemarks}
-                  className="w-full"
-                  data-testid="button-save-remarks"
-                >
-                  <PhoneOff className="h-4 w-4 mr-2" />
-                  {remarksAction === 'callback' ? 'Save & Mark Callback' : 
-                   remarksAction === 'unattended' ? 'Save & Mark Unattended' : 'Save & End Call'}
-                </Button>
-                <Button
-                  onClick={() => setShowRemarksInput(false)}
-                  variant="outline"
-                  className="w-full"
-                  data-testid="button-cancel-remarks"
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </DialogContent>
