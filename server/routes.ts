@@ -270,7 +270,10 @@ export function registerRoutes(app: Express): Server {
         filters[key as keyof typeof filters] === undefined && delete filters[key as keyof typeof filters]
       );
 
+
       const transactions = await storage.getAllTransactions(filters);
+      
+      
       res.json(transactions);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch transactions" });

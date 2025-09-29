@@ -252,7 +252,7 @@ export class DatabaseStorage implements IStorage {
       }
       if (filters.search) {
         conditions.push(
-          sql`${transactions.customerName} ILIKE ${'%' + filters.search + '%'} OR ${transactions.phone} ILIKE ${'%' + filters.search + '%'}`
+          sql`${transactions.customerName} ILIKE ${'%' + filters.search + '%'} OR ${transactions.phone} ILIKE ${'%' + filters.search + '%'} OR ${transactions.orderSku} ILIKE ${'%' + filters.search + '%'}`
         );
       }
       if (filters.isUpsell !== undefined) {

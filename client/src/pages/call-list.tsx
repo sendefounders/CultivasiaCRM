@@ -71,8 +71,7 @@ export default function CallList() {
       if (user?.role === 'agent') {
         params.append('agentId', user.id);
       }
-      // Only show original orders (not upsells) in call list
-      params.append('isUpsell', 'false');
+      // Show all transactions (both original orders and upsells) in call list
       
       const response = await fetch(`/api/transactions?${params}`);
       if (!response.ok) {
