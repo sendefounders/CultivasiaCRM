@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Phone, PhoneOff, AlertTriangle, Calendar, ShoppingCart } from "lucide-react";
-import { Transaction, CallHistory } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Phone, PhoneOff, AlertTriangle, Calendar, ShoppingCart, Check, X } from "lucide-react";
+import { Transaction, CallHistory, Product } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -17,7 +19,7 @@ interface CustomerModalProps {
   onMarkCallback: (callId: string, remarks?: string, duration?: number) => void;
   onAnswered: (callId: string) => void;
   onStopTimer: () => number; // Returns the current timer duration
-  onNewOrder?: (callId: string) => void; // Optional new order/upselling handler
+  onAcceptUpsell: (callId: string, newProductSku: string, customPrice?: number) => void; // Upsell handler
   callTimer?: string;
 }
 
@@ -30,9 +32,10 @@ export function CustomerModal({
   onMarkCallback,
   onAnswered,
   onStopTimer,
-  onNewOrder,
+  onAcceptUpsell,
   callTimer
 }: CustomerModalProps) {
+  const { toast } = useToast();
   const [showRemarksInput, setShowRemarksInput] = useState(false);
   const [remarks, setRemarks] = useState("");
   // Initialize callPhase based on call status - if in_progress, skip to answered phase
@@ -41,6 +44,36 @@ export function CustomerModal({
   );
   const [remarksAction, setRemarksAction] = useState<'end_call' | 'callback' | 'unattended'>('end_call');
   const [capturedDuration, setCapturedDuration] = useState<number | null>(null);
+  
+  // Upsell state
+  const [showUpsellSection, setShowUpsellSection] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [newProductSku, setNewProductSku] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+
+  // Fetch products for upsell functionality
+  const { data: products } = useQuery<Product[]>({
+    queryKey: ['/api/products'],
+  });
+
+  // Get current and suggested products
+  const currentProduct = products?.find(p => p.sku === call?.orderSku);
+  const suggestedProduct = products?.find(p => p.sku !== call?.orderSku);
+  const hasCompleteProductData = currentProduct && suggestedProduct;
+
+  // Format currency helper
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  // Calculate price difference for suggested upsell
+  const priceDifference = hasCompleteProductData && suggestedProduct && currentProduct
+    ? Number(suggestedProduct.price) - Number(currentProduct.price)
+    : 0;
 
   // Sync callPhase with call status changes
   useEffect(() => {
@@ -92,10 +125,47 @@ export function CustomerModal({
   };
 
   const handleNewOrderClick = () => {
-    // Trigger new order/upselling workflow
-    if (call && onNewOrder) {
-      onNewOrder(call.id);
+    // Stop timer and capture duration when New Order is clicked
+    const duration = onStopTimer();
+    setCapturedDuration(duration);
+    // Show inline upsell section
+    setShowUpsellSection(true);
+  };
+
+  const handleAcceptSuggested = () => {
+    if (call && suggestedProduct) {
+      onAcceptUpsell(call.id, suggestedProduct.sku);
+      setShowUpsellSection(false);
+      onClose();
+      toast({
+        title: "Upsell Accepted",
+        description: `Successfully upsold ${call.customerName} to ${suggestedProduct.name}`,
+      });
     }
+  };
+
+  const handleAcceptManual = () => {
+    if (call && newProductSku.trim() && newPrice.trim()) {
+      const price = parseFloat(newPrice);
+      if (!isNaN(price)) {
+        onAcceptUpsell(call.id, newProductSku.trim(), price);
+        setShowUpsellSection(false);
+        setNewProductSku("");
+        setNewPrice("");
+        onClose();
+        toast({
+          title: "Order Created",
+          description: `Successfully created order for ${call.customerName}`,
+        });
+      }
+    }
+  };
+
+  const handleCancelUpsell = () => {
+    setShowUpsellSection(false);
+    setManualMode(false);
+    setNewProductSku("");
+    setNewPrice("");
   };
 
   const handleSaveRemarks = () => {
@@ -141,15 +211,6 @@ export function CustomerModal({
   });
 
   if (!call) return null;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-PH', {
@@ -351,17 +412,165 @@ export function CustomerModal({
               {/* Answered Phase - Show New Order, End Call, Callback, Unattended */}
               {callPhase === 'answered' && (
                 <div className="space-y-3">
-                  {/* First row: New Order button for upselling */}
-                  <div className="flex space-x-3">
-                    <Button
-                      onClick={handleNewOrderClick}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      data-testid="button-new-order"
-                    >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      New Order
-                    </Button>
-                  </div>
+                  {/* First row: New Order button or inline upsell section */}
+                  {!showUpsellSection ? (
+                    <div className="flex space-x-3">
+                      <Button
+                        onClick={handleNewOrderClick}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        data-testid="button-new-order"
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        New Order
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-foreground">Add New Order</h4>
+                      
+                      {/* Current Order Info */}
+                      <div className="p-3 bg-white rounded-lg">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Customer</p>
+                            <p className="font-medium">{call?.customerName}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Current SKU</p>
+                            <p className="font-medium">{call?.orderSku}</p>
+                          </div>
+                          {currentProduct && (
+                            <>
+                              <div>
+                                <p className="text-muted-foreground">Product Name</p>
+                                <p className="font-medium">{currentProduct.name}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Current Price</p>
+                                <p className="font-medium">{formatCurrency(Number(currentProduct.price))}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Upsell Options */}
+                      {hasCompleteProductData && !manualMode && (
+                        <>
+                          {/* Suggested Upsell */}
+                          <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                            <h5 className="font-medium text-green-800 mb-2">Suggested Upsell</h5>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Product SKU</p>
+                                <p className="font-bold text-green-700">{suggestedProduct!.sku}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Product Name</p>
+                                <p className="font-medium">{suggestedProduct!.name}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">New Price</p>
+                                <p className="font-bold text-green-700">{formatCurrency(Number(suggestedProduct!.price))}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Additional Revenue</p>
+                                <p className="font-bold text-green-600">+{formatCurrency(priceDifference)}</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Suggested Upsell Buttons */}
+                          <div className="flex space-x-2">
+                            <Button
+                              onClick={handleAcceptSuggested}
+                              className="flex-1"
+                              data-testid="button-accept-suggested"
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Accept Suggested
+                            </Button>
+                            <Button
+                              onClick={() => setManualMode(true)}
+                              variant="outline"
+                              className="flex-1"
+                              data-testid="button-manual-entry"
+                            >
+                              Manual Entry
+                            </Button>
+                          </div>
+                        </>
+                      )}
+
+                      {(manualMode || !hasCompleteProductData) && (
+                        <>
+                          {/* Manual Entry Form */}
+                          <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                            <h5 className="font-medium text-orange-800 mb-3">Manual Order Entry</h5>
+                            <div className="space-y-3">
+                              <div>
+                                <Label htmlFor="new-sku">Product SKU</Label>
+                                <Input
+                                  id="new-sku"
+                                  value={newProductSku}
+                                  onChange={(e) => setNewProductSku(e.target.value)}
+                                  placeholder="Enter product SKU..."
+                                  data-testid="input-new-sku"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="new-price">Price (PHP)</Label>
+                                <Input
+                                  id="new-price"
+                                  type="number"
+                                  value={newPrice}
+                                  onChange={(e) => setNewPrice(e.target.value)}
+                                  placeholder="Enter price..."
+                                  data-testid="input-new-price"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Manual Entry Buttons */}
+                          <div className="flex space-x-2">
+                            <Button
+                              onClick={handleAcceptManual}
+                              disabled={!newProductSku.trim() || !newPrice.trim()}
+                              className="flex-1"
+                              data-testid="button-accept-manual"
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Create Order
+                            </Button>
+                            {hasCompleteProductData && (
+                              <Button
+                                onClick={() => setManualMode(false)}
+                                variant="outline"
+                                className="flex-1"
+                                data-testid="button-back-suggested"
+                              >
+                                Back to Suggested
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Cancel Button */}
+                      <div className="pt-2 border-t">
+                        <Button
+                          onClick={handleCancelUpsell}
+                          variant="secondary"
+                          className="w-full"
+                          data-testid="button-cancel-upsell"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Second row: Call end options */}
                   <div className="flex space-x-3">

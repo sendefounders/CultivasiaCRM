@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/sidebar";
 import { CustomerModal } from "@/components/customer-modal";
-import { UpsellModal } from "@/components/upsell-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +33,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 export default function CallList() {
   const [selectedCall, setSelectedCall] = useState<Transaction | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [callTypeFilter, setCallTypeFilter] = useState("");
@@ -199,11 +197,6 @@ export default function CallList() {
       }
     });
     setShowCustomerModal(false);
-    
-    // Show upsell modal after a short delay
-    setTimeout(() => {
-      setShowUpsellModal(true);
-    }, 300);
   };
 
   const handleMarkUnattended = (callId: string, remarks?: string, duration?: number) => {
@@ -262,25 +255,6 @@ export default function CallList() {
     return callTimer;
   };
 
-  const handleNewOrder = (callId: string) => {
-    // Stop timer and capture duration when New Order is clicked
-    const duration = handleStopTimer();
-    
-    // Find the call data
-    const call = calls?.find(c => c.id === callId);
-    if (!call) {
-      toast({
-        title: "Error",
-        description: "Call data not found. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Always proceed to upsell modal - it will handle missing product data gracefully
-    setShowCustomerModal(false);
-    setShowUpsellModal(true);
-  };
 
 
   const handleAcceptUpsell = (callId: string, newProductSku: string, customPrice?: number) => {
@@ -322,16 +296,8 @@ export default function CallList() {
         variant: "destructive",
       });
     }
-    
-    setShowUpsellModal(false);
   };
 
-  const handleDeclineUpsell = (callId: string) => {
-    updateCallMutation.mutate({
-      callId,
-      updates: { status: 'completed' }
-    });
-  };
 
   const filteredCalls = calls?.filter(call => {
     const matchesSearch = searchTerm === "" || 
@@ -538,20 +504,10 @@ export default function CallList() {
           onMarkCallback={handleMarkCallback}
           onAnswered={handleAnswered}
           onStopTimer={handleStopTimer}
-          onNewOrder={handleNewOrder}
+          onAcceptUpsell={handleAcceptUpsell}
           callTimer={formatCallTimer(callTimer)}
         />
 
-        {/* Upsell Modal */}
-        <UpsellModal
-          isOpen={showUpsellModal}
-          onClose={() => setShowUpsellModal(false)}
-          call={selectedCall}
-          currentProduct={currentProduct}
-          suggestedProduct={suggestedProduct}
-          onAcceptUpsell={handleAcceptUpsell}
-          onDeclineUpsell={handleDeclineUpsell}
-        />
       </main>
     </div>
   );
