@@ -189,49 +189,60 @@ export default function CallList() {
     setShowCustomerModal(true);
   };
 
-  const handleEndCall = async (callId: string, remarks?: string, duration?: number) => {
+  const handleEndCall = async (callId: string, remarks?: string, duration?: number, hasOrdersPlacedThisCall = false) => {
     // Use provided duration or current timer value
     const finalDuration = duration !== undefined ? duration : callTimer;
     
+    // Use the hasOrdersPlacedThisCall parameter to determine status
+    // Only mark as 'completed' (Purchased) if orders were actually placed during this call session
+    const finalStatus = hasOrdersPlacedThisCall ? 'completed' : 'called';
+    
     try {
-      // Fetch fresh data from the database to avoid cache timing issues
-      const response = await fetch(`/api/transactions/${callId}`, {
-        credentials: 'include'
-      });
-      const freshCall = await response.json();
-      
-      // Check if there's any order placed (either orderSku exists OR isUpsell is true)
-      const hasOrder = freshCall?.orderSku || freshCall?.isUpsell;
-      
-      updateCallMutation.mutate({
-        callId,
-        updates: { 
-          // Preserve all existing order data if it exists (from fresh data)
-          ...(hasOrder && {
+      // Only fetch fresh data if orders were placed this call to preserve the order information
+      if (hasOrdersPlacedThisCall) {
+        const response = await fetch(`/api/transactions/${callId}`, {
+          credentials: 'include'
+        });
+        const freshCall = await response.json();
+        
+        updateCallMutation.mutate({
+          callId,
+          updates: { 
+            // Preserve all existing order data from this call session
             originalOrderSku: freshCall.originalOrderSku,
             originalPrice: freshCall.originalPrice,
             orderSku: freshCall.orderSku,
             currentPrice: freshCall.currentPrice,
             revenue: freshCall.revenue,
-            isUpsell: true  // Always set to true if there's any order
-          }),
-          // Update call completion data - use 'completed' if there's order data, 'called' otherwise
-          status: hasOrder ? 'completed' : 'called',
-          date: new Date(), // Set current date for dashboard stats
-          callEndedAt: new Date(),
-          callDuration: finalDuration,
-          callRemarks: remarks || null
-        }
-      });
+            isUpsell: freshCall.isUpsell,
+            status: finalStatus,
+            date: new Date(), // Set current date for dashboard stats
+            callEndedAt: new Date(),
+            callDuration: finalDuration,
+            callRemarks: remarks || null
+          }
+        });
+      } else {
+        // No orders placed this call - just mark as 'called' without fetching order data
+        updateCallMutation.mutate({
+          callId,
+          updates: { 
+            status: finalStatus,
+            date: new Date(), // Set current date for dashboard stats
+            callEndedAt: new Date(),
+            callDuration: finalDuration,
+            callRemarks: remarks || null
+          }
+        });
+      }
     } catch (error) {
-      // Fallback to cached data if fetch fails
+      // Fallback - always use 'called' status if there's an error
       console.error('Failed to fetch fresh call data:', error);
-      const call = calls?.find(c => c.id === callId);
       
       updateCallMutation.mutate({
         callId,
         updates: { 
-          status: 'called', // Default to 'called' if we can't verify upsell data
+          status: 'called', // Default to 'called' if we can't verify data
           date: new Date(), // Set current date for dashboard stats
           callEndedAt: new Date(),
           callDuration: finalDuration,
