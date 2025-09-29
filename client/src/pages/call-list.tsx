@@ -369,7 +369,18 @@ export default function CallList() {
     const matchesSearch = searchTerm === "" || 
       call.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       call.phone.includes(searchTerm);
-    const matchesStatus = statusFilter === "" || statusFilter === "all" || call.status === statusFilter;
+    
+    // Handle status filtering with special case for "purchased"
+    let matchesStatus = false;
+    if (statusFilter === "" || statusFilter === "all") {
+      matchesStatus = true;
+    } else if (statusFilter === "purchased") {
+      // "Purchased" means completed calls with orders (isUpsell = true)
+      matchesStatus = call.status === 'completed' && call.isUpsell;
+    } else {
+      matchesStatus = call.status === statusFilter;
+    }
+    
     const matchesCallType = callTypeFilter === "" || callTypeFilter === "all" || call.callType === callTypeFilter;
     
     return matchesSearch && matchesStatus && matchesCallType;
@@ -457,7 +468,7 @@ export default function CallList() {
                 <SelectItem value="called">Called</SelectItem>
                 <SelectItem value="unattended">Unattended</SelectItem>
                 <SelectItem value="callback">Callback</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="purchased">Purchased</SelectItem>
               </SelectContent>
             </Select>
 
