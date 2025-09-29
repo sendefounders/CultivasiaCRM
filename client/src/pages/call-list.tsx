@@ -191,7 +191,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'called',
-        callEndedAt: new Date().toISOString(),
+        callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
       }
@@ -207,7 +207,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'unattended',
-        callEndedAt: new Date().toISOString(),
+        callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
       }
@@ -223,7 +223,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'callback',
-        callEndedAt: new Date().toISOString(),
+        callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
       }
@@ -243,7 +243,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'in_progress',
-        callStartedAt: now.toISOString(),
+        callStartedAt: now,
         agentId: user?.id
       }
     });
@@ -267,8 +267,7 @@ export default function CallList() {
         ? customPrice.toString() 
         : newProduct?.price || '0';
       
-      // During order placement, don't complete the call or stop timer
-      // Only update order information, keep call in_progress
+      // During order placement, keep call in_progress so agent can continue call workflow
       updateCallMutation.mutate({
         callId: call.id,
         updates: {
@@ -281,7 +280,7 @@ export default function CallList() {
           // Calculate revenue
           revenue: (Number(finalPrice) - Number(call.originalPrice || call.currentPrice)).toString(),
           isUpsell: true,
-          // Keep call in_progress so timer continues - don't mark as completed yet
+          // Keep call in_progress so agent can continue workflow (place more orders, end call, etc.)
           status: 'in_progress'
           // Don't set callDuration or callEndedAt - timer should keep running
         }
