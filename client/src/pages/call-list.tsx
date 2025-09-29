@@ -92,7 +92,11 @@ export default function CallList() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      // Invalidate all transaction queries regardless of parameters
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/transactions'],
+        exact: false // This ensures all variations are invalidated
+      });
       toast({
         title: "Call updated successfully",
       });
@@ -112,8 +116,11 @@ export default function CallList() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      // Invalidate all transaction queries regardless of parameters
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/transactions'],
+        exact: false // This ensures all variations are invalidated
+      });
     },
   });
 
@@ -260,6 +267,20 @@ export default function CallList() {
         callDuration: finalDuration,
         callRemarks: remarks || null
       }
+    }, {
+      onSuccess: () => {
+        toast({
+          title: "Call Marked as Unattended",
+          description: `Successfully marked ${call?.customerName || 'call'} as unattended.`,
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Error",
+          description: "Failed to mark call as unattended. Please try again.",
+          variant: "destructive",
+        });
+      }
     });
     setShowCustomerModal(false);
   };
@@ -288,6 +309,20 @@ export default function CallList() {
         callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
+      }
+    }, {
+      onSuccess: () => {
+        toast({
+          title: "Callback Scheduled",
+          description: `Successfully scheduled callback for ${call?.customerName || 'customer'}.`,
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Error",
+          description: "Failed to schedule callback. Please try again.",
+          variant: "destructive",
+        });
       }
     });
     setShowCustomerModal(false);
@@ -594,6 +629,7 @@ export default function CallList() {
           onStopTimer={handleStopTimer}
           onAcceptUpsell={handleAcceptUpsell}
           callTimer={formatCallTimer(callTimer)}
+          isUpdating={updateCallMutation.isPending}
         />
 
       </main>

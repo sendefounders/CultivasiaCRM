@@ -21,6 +21,7 @@ interface CustomerModalProps {
   onStopTimer: () => number; // Returns the current timer duration
   onAcceptUpsell: (callId: string, newProductSku: string, customPrice?: number, duration?: number) => void; // Upsell handler with duration
   callTimer?: string;
+  isUpdating?: boolean; // Loading state for mutations
 }
 
 export function CustomerModal({ 
@@ -33,7 +34,8 @@ export function CustomerModal({
   onAnswered,
   onStopTimer,
   onAcceptUpsell,
-  callTimer
+  callTimer,
+  isUpdating = false
 }: CustomerModalProps) {
   const { toast } = useToast();
   const [showRemarksInput, setShowRemarksInput] = useState(false);
@@ -456,8 +458,9 @@ export function CustomerModal({
                       
                       <Button
                         onClick={handleUnattendedClick}
+                        disabled={isUpdating}
                         variant="secondary"
-                        className="w-full bg-red-200 hover:bg-red-300 text-red-800"
+                        className="w-full bg-red-200 hover:bg-red-300 text-red-800 disabled:opacity-50"
                         data-testid="button-mark-unattended"
                       >
                         <AlertTriangle className="h-4 w-4 mr-2" />
@@ -465,8 +468,9 @@ export function CustomerModal({
                       </Button>
                       <Button
                         onClick={handleCallbackClick}
+                        disabled={isUpdating}
                         variant="secondary"
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white disabled:opacity-50"
                         data-testid="button-callback"
                       >
                         <Phone className="h-4 w-4 mr-2" />
@@ -648,7 +652,8 @@ export function CustomerModal({
                     </Button>
                     <Button
                       onClick={handleCallbackClick}
-                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                      disabled={isUpdating}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white disabled:opacity-50"
                       data-testid="button-callback-answered"
                     >
                       <Calendar className="h-4 w-4 mr-2" />
@@ -656,8 +661,9 @@ export function CustomerModal({
                     </Button>
                     <Button
                       onClick={handleUnattendedClick}
+                      disabled={isUpdating}
                       variant="secondary"
-                      className="w-full bg-red-200 hover:bg-red-300 text-red-800"
+                      className="w-full bg-red-200 hover:bg-red-300 text-red-800 disabled:opacity-50"
                       data-testid="button-unattended-answered"
                     >
                       <AlertTriangle className="h-4 w-4 mr-2" />
