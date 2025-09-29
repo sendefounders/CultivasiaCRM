@@ -236,7 +236,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     agentPerformance?.slice(0, 3).map((agent, index) => (
-                      <div key={agent.agent.id} className="flex items-center justify-between p-4 bg-secondary rounded-lg" data-testid={`agent-performance-${index}`}>
+                      <div key={agent.agent.id} className="flex items-center justify-between p-4 bg-card border border-border rounded-lg" data-testid={`agent-performance-${index}`}>
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-medium text-sm">
                             {getInitials(agent.agent.username)}
@@ -251,7 +251,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-green-600" data-testid={`agent-revenue-${index}`}>
+                          <p className="font-semibold text-green-600 dark:text-green-400" data-testid={`agent-revenue-${index}`}>
                             {formatCurrency(agent.revenue)}
                           </p>
                           <p className="text-xs text-muted-foreground">Revenue</p>
