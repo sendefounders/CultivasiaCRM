@@ -143,7 +143,8 @@ export function CustomerModal({
 
   const handleAcceptSuggested = () => {
     if (call && suggestedProduct) {
-      onAcceptUpsell(call.id, suggestedProduct.sku, undefined, capturedDuration || undefined);
+      // Don't pass duration - timer continues running until End Call
+      onAcceptUpsell(call.id, suggestedProduct.sku, undefined, undefined);
       
       // Add to placed orders list
       setPlacedOrders(prev => [...prev, {
@@ -165,7 +166,8 @@ export function CustomerModal({
     if (call && newProductSku.trim() && newPrice.trim()) {
       const price = parseFloat(newPrice);
       if (!isNaN(price)) {
-        onAcceptUpsell(call.id, newProductSku.trim(), price, capturedDuration || undefined);
+        // Don't pass duration - timer continues running until End Call
+        onAcceptUpsell(call.id, newProductSku.trim(), price, undefined);
         
         // Add to placed orders list
         setPlacedOrders(prev => [...prev, {
