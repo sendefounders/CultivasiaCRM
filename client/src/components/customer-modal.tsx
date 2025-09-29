@@ -84,7 +84,7 @@ export function CustomerModal({
     }
   }, [call?.status]);
 
-  // Reset placed orders when modal opens with a new call
+  // Reset placed orders and notes when modal opens with a new call
   useEffect(() => {
     if (isOpen && call) {
       setPlacedOrders([]);
@@ -92,6 +92,7 @@ export function CustomerModal({
       setManualMode(false);
       setNewProductSku("");
       setNewPrice("");
+      setRemarks(""); // Reset call notes for each new customer
     }
   }, [isOpen, call?.id]);
 
