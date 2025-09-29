@@ -410,8 +410,8 @@ export default function CallList() {
     if (statusFilter === "" || statusFilter === "all") {
       matchesStatus = true;
     } else if (statusFilter === "purchased") {
-      // "Purchased" means completed calls with orders (isUpsell = true)
-      matchesStatus = call.status === 'completed' && call.isUpsell;
+      // "Purchased" means any completed call (customer made a purchase)
+      matchesStatus = call.status === 'completed';
     } else {
       matchesStatus = call.status === statusFilter;
     }
@@ -577,18 +577,16 @@ export default function CallList() {
                             <Badge 
                               variant="secondary"
                               className={
+                                call.status === 'completed' ? 'bg-green-200 text-green-800 hover:bg-green-200' :
                                 call.status === 'called' ? 'bg-gray-200 text-gray-700 hover:bg-gray-200' :
-                                call.status === 'completed' && call.isUpsell ? 'bg-green-200 text-green-800 hover:bg-green-200' :
-                                call.status === 'completed' ? 'bg-gray-200 text-gray-700 hover:bg-gray-200' :
                                 call.status === 'unattended' ? 'bg-red-200 text-red-800 hover:bg-red-200' :
                                 call.status === 'callback' ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-200' :
                                 'bg-gray-200 text-gray-700 hover:bg-gray-200'
                               }
                               data-testid={`status-${call.status}-${call.id}`}
                             >
-                              {call.status === 'called' ? 'Called' :
-                               call.status === 'completed' && call.isUpsell ? 'Purchased' :
-                               call.status === 'completed' ? 'Called' :
+                              {call.status === 'completed' ? 'Purchased' :
+                               call.status === 'called' ? 'Called' :
                                call.status === 'unattended' ? 'Unattended' :
                                call.status === 'callback' ? 'Callback' : 'Called'}
                             </Badge>
