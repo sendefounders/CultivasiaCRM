@@ -262,7 +262,7 @@ export function CustomerModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto" data-testid="customer-modal">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden" data-testid="customer-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Customer Information
@@ -279,231 +279,216 @@ export function CustomerModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Customer Details */}
-          <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6 h-[70vh]">
+          {/* Left Column - Customer Information */}
+          <div className="space-y-4 overflow-y-auto pr-2">
+            {/* Customer Details */}
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Customer Name</label>
-              <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-name">
-                {call.customerName}
-              </p>
+              <h4 className="font-semibold text-foreground mb-3">Customer Details</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Customer Name</label>
+                  <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-name">
+                    {call.customerName}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
+                  <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-phone">
+                    {call.phone}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Current Order</label>
+                  <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-order">
+                    {call.orderSku}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Current Price</label>
+                  <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-price">
+                    {formatCurrency(Number(call.currentPrice))}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
-              <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-phone">
-                {call.phone}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Current Order</label>
-              <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-order">
-                {call.orderSku}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Current Price</label>
-              <p className="text-lg font-semibold text-foreground mt-1" data-testid="text-customer-price">
-                {formatCurrency(Number(call.currentPrice))}
-              </p>
-            </div>
-          </div>
 
-          {/* AWB Number */}
-          {call.awb && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">AWB Number</label>
-              <p className="text-foreground mt-1" data-testid="text-customer-awb">{call.awb}</p>
-            </div>
-          )}
+            {/* AWB Number */}
+            {call.awb && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">AWB Number</label>
+                <p className="text-foreground mt-1" data-testid="text-customer-awb">{call.awb}</p>
+              </div>
+            )}
 
-          {/* Address */}
-          {call.address && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Address</label>
-              <p className="text-foreground mt-1" data-testid="text-customer-address">
-                {call.address}
-              </p>
-            </div>
-          )}
-
-          {/* Call Remarks */}
-          {call.callRemarks && (
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Call Remarks</h4>
-              <div className="p-3 bg-secondary rounded-lg">
-                <p className="text-sm text-foreground" data-testid="text-call-remarks">
-                  {call.callRemarks}
+            {/* Address */}
+            {call.address && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Address</label>
+                <p className="text-foreground mt-1" data-testid="text-customer-address">
+                  {call.address}
                 </p>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Call History */}
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Call History</h4>
-            <div className="space-y-3">
-              {callHistory && callHistory.length > 0 ? (
-                callHistory.map((history, index) => (
-                  <div key={history.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg" data-testid={`call-history-${index}`}>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {formatDateTime(history.createdAt)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Action: {history.action}
-                      </p>
-                      {history.notes && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {history.notes}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
-                  <p>No call history available</p>
+            {/* Call Remarks */}
+            {call.callRemarks && (
+              <div>
+                <h4 className="font-semibold text-foreground mb-3">Previous Call Remarks</h4>
+                <div className="p-3 bg-secondary rounded-lg">
+                  <p className="text-sm text-foreground" data-testid="text-call-remarks">
+                    {call.callRemarks}
+                  </p>
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Call History */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-3">Call History</h4>
+              <div className="space-y-2">
+                {callHistory && callHistory.length > 0 ? (
+                  callHistory.map((history, index) => (
+                    <div key={history.id} className="p-2 bg-secondary rounded-lg" data-testid={`call-history-${index}`}>
+                      <div>
+                        <p className="text-xs font-medium text-foreground">
+                          {formatDateTime(history.createdAt)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Action: {history.action}
+                        </p>
+                        {history.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {history.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-3 text-muted-foreground">
+                    <p className="text-sm">No call history available</p>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Orders Placed During This Call */}
+            {placedOrders.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-foreground mb-3">Orders Placed This Call</h4>
+                <div className="space-y-2">
+                  {placedOrders.map((order, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid={`placed-order-${index}`}>
+                      <div>
+                        <p className="text-xs font-medium text-green-800 dark:text-green-300">
+                          {order.name}
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          SKU: {order.sku}
+                        </p>
+                      </div>
+                      <div className="text-xs font-semibold text-green-800 dark:text-green-300">
+                        {formatCurrency(Number(order.price))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-xs text-muted-foreground text-center pt-1">
+                    {placedOrders.length} order{placedOrders.length !== 1 ? 's' : ''} placed during this call
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Orders Placed During This Call */}
-          {placedOrders.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Orders Placed This Call</h4>
-              <div className="space-y-2">
-                {placedOrders.map((order, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid={`placed-order-${index}`}>
-                    <div>
-                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                        {order.name}
-                      </p>
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        SKU: {order.sku}
-                      </p>
-                    </div>
-                    <div className="text-sm font-semibold text-green-800 dark:text-green-300">
-                      {formatCurrency(Number(order.price))}
-                    </div>
-                  </div>
-                ))}
-                <div className="text-xs text-muted-foreground text-center pt-2">
-                  {placedOrders.length} order{placedOrders.length !== 1 ? 's' : ''} placed during this call
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Call Remarks Input */}
-          {showRemarksInput && (
-            <div className="space-y-3 p-4 bg-secondary rounded-lg">
-              <Label htmlFor="call-remarks">Call Remarks (Optional)</Label>
+          {/* Right Column - Actions and Notes */}
+          <div className="space-y-4 overflow-y-auto pl-2">
+            {/* Always-visible Call Notes */}
+            <div className="space-y-3">
+              <Label htmlFor="live-call-notes">Call Notes</Label>
               <Textarea
-                id="call-remarks"
-                placeholder="Add any notes about this call..."
+                id="live-call-notes"
+                placeholder="Take notes during the call..."
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                className="min-h-[80px]"
-                data-testid="textarea-call-remarks"
+                className="min-h-[120px] resize-none"
+                data-testid="textarea-live-notes"
               />
-              <div className="flex space-x-2">
-                <Button
-                  onClick={handleSaveRemarks}
-                  className="flex-1"
-                  data-testid="button-save-remarks"
-                >
-                  <PhoneOff className="h-4 w-4 mr-2" />
-                  {remarksAction === 'callback' ? 'Save & Mark Callback' : 
-                   remarksAction === 'unattended' ? 'Save & Mark Unattended' : 'Save & End Call'}
-                </Button>
-                <Button
-                  onClick={() => setShowRemarksInput(false)}
-                  variant="outline"
-                  data-testid="button-cancel-remarks"
-                >
-                  Cancel
-                </Button>
-              </div>
             </div>
-          )}
 
-          {/* Action Buttons */}
-          {!showRemarksInput && isCallActionable() && (
-            <div>
-              {/* Initial Call Phase - Show Answered, Unattended, Callback */}
-              {callPhase === 'initial' && (
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleAnsweredClick}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    data-testid="button-answered"
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Answered
-                  </Button>
-                  <Button
-                    onClick={handleUnattendedClick}
-                    variant="secondary"
-                    className="flex-1 bg-red-200 hover:bg-red-300 text-red-800"
-                    data-testid="button-mark-unattended"
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Unattended
-                  </Button>
-                  <Button
-                    onClick={handleCallbackClick}
-                    variant="secondary"
-                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
-                    data-testid="button-callback"
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Callback
-                  </Button>
-                </div>
-              )}
+            {/* Action Buttons */}
+            {isCallActionable() && (
+              <div className="space-y-4">
+                {/* Initial Call Phase - Show Answered, Unattended, Callback */}
+                {callPhase === 'initial' && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3">Call Actions</h4>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={handleAnsweredClick}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        data-testid="button-answered"
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Answered
+                      </Button>
+                      <Button
+                        onClick={handleUnattendedClick}
+                        variant="secondary"
+                        className="w-full bg-red-200 hover:bg-red-300 text-red-800"
+                        data-testid="button-mark-unattended"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Unattended
+                      </Button>
+                      <Button
+                        onClick={handleCallbackClick}
+                        variant="secondary"
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                        data-testid="button-callback"
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Callback
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
               {/* Answered Phase - Show New Order, End Call, Callback, Unattended */}
               {callPhase === 'answered' && (
-                <div className="space-y-3">
-                  {/* First row: New Order button or inline upsell section */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-foreground">Call Actions</h4>
+                  
+                  {/* New Order Section */}
                   {!showUpsellSection ? (
-                    <div className="flex space-x-3">
-                      <Button
-                        onClick={handleNewOrderClick}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                        data-testid="button-new-order"
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        New Order
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={handleNewOrderClick}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      data-testid="button-new-order"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      New Order
+                    </Button>
                   ) : (
-                    <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <h4 className="font-semibold text-foreground">Add New Order</h4>
+                    <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <h5 className="font-medium text-foreground">Add New Order</h5>
                       
-                      {/* Current Order Info */}
-                      <div className="p-3 bg-white rounded-lg">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Customer</p>
-                            <p className="font-medium">{call?.customerName}</p>
+                      {/* Current Order Info - Compact */}
+                      <div className="p-2 bg-white rounded text-xs">
+                        <div className="space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Customer:</span>
+                            <span className="font-medium">{call?.customerName}</span>
                           </div>
-                          <div>
-                            <p className="text-muted-foreground">Current SKU</p>
-                            <p className="font-medium">{call?.orderSku}</p>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Current SKU:</span>
+                            <span className="font-medium">{call?.orderSku}</span>
                           </div>
                           {currentProduct && (
-                            <>
-                              <div>
-                                <p className="text-muted-foreground">Product Name</p>
-                                <p className="font-medium">{currentProduct.name}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Current Price</p>
-                                <p className="font-medium">{formatCurrency(Number(currentProduct.price))}</p>
-                              </div>
-                            </>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Price:</span>
+                              <span className="font-medium">{formatCurrency(Number(currentProduct.price))}</span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -626,11 +611,11 @@ export function CustomerModal({
                     </div>
                   )}
                   
-                  {/* Second row: Call end options */}
-                  <div className="flex space-x-3">
+                  {/* Call End Options */}
+                  <div className="space-y-2">
                     <Button
                       onClick={handleEndCallClick}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
                       data-testid="button-end-call"
                     >
                       <PhoneOff className="h-4 w-4 mr-2" />
@@ -638,7 +623,7 @@ export function CustomerModal({
                     </Button>
                     <Button
                       onClick={handleCallbackClick}
-                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
                       data-testid="button-callback-answered"
                     >
                       <Calendar className="h-4 w-4 mr-2" />
@@ -647,7 +632,7 @@ export function CustomerModal({
                     <Button
                       onClick={handleUnattendedClick}
                       variant="secondary"
-                      className="flex-1 bg-red-200 hover:bg-red-300 text-red-800"
+                      className="w-full bg-red-200 hover:bg-red-300 text-red-800"
                       data-testid="button-unattended-answered"
                     >
                       <AlertTriangle className="h-4 w-4 mr-2" />
@@ -658,6 +643,30 @@ export function CustomerModal({
               )}
             </div>
           )}
+
+            {/* Save Notes Button - Always visible when there are notes */}
+            {remarks.trim() && showRemarksInput && (
+              <div className="space-y-2">
+                <Button
+                  onClick={handleSaveRemarks}
+                  className="w-full"
+                  data-testid="button-save-remarks"
+                >
+                  <PhoneOff className="h-4 w-4 mr-2" />
+                  {remarksAction === 'callback' ? 'Save & Mark Callback' : 
+                   remarksAction === 'unattended' ? 'Save & Mark Unattended' : 'Save & End Call'}
+                </Button>
+                <Button
+                  onClick={() => setShowRemarksInput(false)}
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-cancel-remarks"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
