@@ -476,7 +476,6 @@ export default function CallList() {
                       <TableHead>Phone</TableHead>
                       <TableHead>Order</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Order Status</TableHead>
                       <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -505,24 +504,36 @@ export default function CallList() {
                         <TableCell>{call.orderSku}</TableCell>
                         <TableCell>{formatCurrency(Number(call.currentPrice))}</TableCell>
                         <TableCell>
-                          <Badge variant={call.status === 'completed' && call.isUpsell ? 'default' : 'secondary'}>
-                            {call.status === 'completed' ? (call.isUpsell ? 'Purchased' : 'Reservation') : '-'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            onClick={() => handleCallClick(call)}
-                            disabled={call.status === 'completed'}
-                            data-testid={`button-dial-${call.id}`}
-                            className={getDialButtonStyle(call.status)}
-                          >
-                            <Phone className="h-4 w-4 mr-2" />
-                            {call.status === 'completed' ? 'Completed' : 
-                             call.status === 'called' ? 'Called' :
-                             call.status === 'unattended' ? 'Unattended' :
-                             call.status === 'callback' ? 'Callback' : 'Dial'}
-                          </Button>
+                          {(call.status === 'called' || call.status === 'completed' || call.status === 'unattended' || call.status === 'callback') ? (
+                            <Badge 
+                              variant="secondary"
+                              className={
+                                call.status === 'called' ? 'bg-gray-200 text-gray-700 hover:bg-gray-200' :
+                                call.status === 'completed' && call.isUpsell ? 'bg-green-200 text-green-800 hover:bg-green-200' :
+                                call.status === 'completed' ? 'bg-gray-200 text-gray-700 hover:bg-gray-200' :
+                                call.status === 'unattended' ? 'bg-red-200 text-red-800 hover:bg-red-200' :
+                                call.status === 'callback' ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-200' :
+                                'bg-gray-200 text-gray-700 hover:bg-gray-200'
+                              }
+                              data-testid={`status-${call.status}-${call.id}`}
+                            >
+                              {call.status === 'called' ? 'Called' :
+                               call.status === 'completed' && call.isUpsell ? 'Purchased' :
+                               call.status === 'completed' ? 'Called' :
+                               call.status === 'unattended' ? 'Unattended' :
+                               call.status === 'callback' ? 'Callback' : 'Called'}
+                            </Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleCallClick(call)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                              data-testid={`button-dial-${call.id}`}
+                            >
+                              <Phone className="h-4 w-4 mr-2" />
+                              Dial
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
