@@ -3,17 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Phone, PhoneOff, AlertTriangle } from "lucide-react";
+import { Phone, PhoneOff, AlertTriangle, Calendar } from "lucide-react";
 import { Transaction, CallHistory } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   call: Transaction | null;
   onEndCall: (callId: string, remarks?: string) => void;
-  onMarkUnattended: (callId: string) => void;
+  onMarkUnattended: (callId: string, remarks?: string) => void;
+  onMarkCallback: (callId: string, remarks?: string) => void;
+  onAnswered: (callId: string) => void;
   callTimer?: string;
 }
 
@@ -23,20 +25,82 @@ export function CustomerModal({
   call, 
   onEndCall, 
   onMarkUnattended,
+  onMarkCallback,
+  onAnswered,
   callTimer
 }: CustomerModalProps) {
   const [showRemarksInput, setShowRemarksInput] = useState(false);
   const [remarks, setRemarks] = useState("");
+  // Initialize callPhase based on call status - if in_progress, skip to answered phase
+  const [callPhase, setCallPhase] = useState<'initial' | 'answered'>(
+    call?.status === 'in_progress' ? 'answered' : 'initial'
+  );
+  const [remarksAction, setRemarksAction] = useState<'end_call' | 'callback' | 'unattended'>('end_call');
+
+  // Sync callPhase with call status changes
+  useEffect(() => {
+    if (call?.status === 'in_progress') {
+      setCallPhase('answered');
+    } else {
+      setCallPhase('initial');
+    }
+  }, [call?.status]);
+
+  // Helper to determine if call can still be acted upon
+  const isCallActionable = () => {
+    return call && ['new', 'in_progress'].includes(call.status);
+  };
+
+  const handleAnsweredClick = () => {
+    if (call) {
+      setCallPhase('answered');
+      // Only trigger onAnswered for new calls, not already in-progress calls
+      if (call.status !== 'in_progress') {
+        onAnswered(call.id);
+      }
+    }
+  };
 
   const handleEndCallClick = () => {
+    setRemarksAction('end_call');
+    setShowRemarksInput(true);
+  };
+
+  const handleCallbackClick = () => {
+    setRemarksAction('callback');
+    setShowRemarksInput(true);
+  };
+
+  const handleUnattendedClick = () => {
+    setRemarksAction('unattended');
     setShowRemarksInput(true);
   };
 
   const handleSaveRemarks = () => {
     if (call) {
-      onEndCall(call.id, remarks);
+      switch (remarksAction) {
+        case 'end_call':
+          onEndCall(call.id, remarks);
+          break;
+        case 'callback':
+          onMarkCallback(call.id, remarks);
+          break;
+        case 'unattended':
+          onMarkUnattended(call.id, remarks);
+          break;
+      }
       setShowRemarksInput(false);
       setRemarks("");
+      setCallPhase('initial');
+    }
+  };
+
+  const handleSaveUnattendedRemarks = () => {
+    if (call) {
+      onMarkUnattended(call.id, remarks);
+      setShowRemarksInput(false);
+      setRemarks("");
+      setCallPhase('initial');
     }
   };
   const { data: callHistory } = useQuery<CallHistory[]>({
@@ -212,7 +276,8 @@ export function CustomerModal({
                   data-testid="button-save-remarks"
                 >
                   <PhoneOff className="h-4 w-4 mr-2" />
-                  Save & End Call
+                  {remarksAction === 'callback' ? 'Save & Mark Callback' : 
+                   remarksAction === 'unattended' ? 'Save & Mark Unattended' : 'Save & End Call'}
                 </Button>
                 <Button
                   onClick={() => setShowRemarksInput(false)}
@@ -226,27 +291,70 @@ export function CustomerModal({
           )}
 
           {/* Action Buttons */}
-          {!showRemarksInput && (
-            <div className="flex space-x-3">
-              <Button
-                onClick={handleEndCallClick}
-                className="flex-1"
-                data-testid="button-end-call"
-                disabled={call.status === 'completed'}
-              >
-                <PhoneOff className="h-4 w-4 mr-2" />
-                End Call
-              </Button>
-              <Button
-                onClick={() => onMarkUnattended(call.id)}
-                variant="secondary"
-                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
-                data-testid="button-mark-unattended"
-                disabled={call.status === 'completed'}
-              >
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Unattended
-              </Button>
+          {!showRemarksInput && isCallActionable() && (
+            <div>
+              {/* Initial Call Phase - Show Answered, Unattended, Callback */}
+              {callPhase === 'initial' && (
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleAnsweredClick}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    data-testid="button-answered"
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Answered
+                  </Button>
+                  <Button
+                    onClick={handleUnattendedClick}
+                    variant="secondary"
+                    className="flex-1 bg-red-200 hover:bg-red-300 text-red-800"
+                    data-testid="button-mark-unattended"
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Unattended
+                  </Button>
+                  <Button
+                    onClick={handleCallbackClick}
+                    variant="secondary"
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                    data-testid="button-callback"
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Callback
+                  </Button>
+                </div>
+              )}
+
+              {/* Answered Phase - Show End Call, Callback, Unattended */}
+              {callPhase === 'answered' && (
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleEndCallClick}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    data-testid="button-end-call"
+                  >
+                    <PhoneOff className="h-4 w-4 mr-2" />
+                    End Call
+                  </Button>
+                  <Button
+                    onClick={handleCallbackClick}
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+                    data-testid="button-callback-answered"
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Callback
+                  </Button>
+                  <Button
+                    onClick={handleUnattendedClick}
+                    variant="secondary"
+                    className="flex-1 bg-red-200 hover:bg-red-300 text-red-800"
+                    data-testid="button-unattended-answered"
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Unattended
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
