@@ -136,10 +136,10 @@ export function CustomerModal({
     if (call && suggestedProduct) {
       onAcceptUpsell(call.id, suggestedProduct.sku, undefined, capturedDuration || undefined);
       setShowUpsellSection(false);
-      onClose();
+      // DO NOT close modal - agents can add more orders
       toast({
-        title: "Upsell Accepted",
-        description: `Successfully upsold ${call.customerName} to ${suggestedProduct.name}`,
+        title: "Order Created",
+        description: `Successfully created order for ${suggestedProduct.name}`,
       });
     }
   };
@@ -152,10 +152,10 @@ export function CustomerModal({
         setShowUpsellSection(false);
         setNewProductSku("");
         setNewPrice("");
-        onClose();
+        // DO NOT close modal - agents can add more orders
         toast({
           title: "Order Created",
-          description: `Successfully created order for ${call.customerName}`,
+          description: `Successfully created order for ${newProductSku.trim()}`,
         });
       }
     }
