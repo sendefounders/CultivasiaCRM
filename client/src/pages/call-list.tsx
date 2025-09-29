@@ -146,51 +146,56 @@ export default function CallList() {
     }
   };
 
+  const getDialButtonStyle = (status: string) => {
+    switch (status) {
+      case 'called':
+        return 'bg-gray-300 hover:bg-gray-400 text-gray-700 border-gray-300'; // Light Gray
+      case 'callback':
+        return 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500'; // Yellow
+      case 'unattended':
+        return 'bg-red-200 hover:bg-red-300 text-red-800 border-red-200'; // Washed out Red
+      case 'completed':
+        return 'bg-gray-300 hover:bg-gray-400 text-gray-700 border-gray-300'; // Light Gray for completed
+      default:
+        return 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600'; // Default Blue (theme color)
+    }
+  };
+
   const handleCallClick = (call: Transaction) => {
     setSelectedCall(call);
     
-    // Start or resume timer when opening call
-    const now = new Date();
-    let currentCallStartTime = callStartTime;
-    
-    // If call was already started, use existing start time
-    if (call.callStartedAt) {
-      currentCallStartTime = new Date(call.callStartedAt);
-      const elapsed = Math.floor((now.getTime() - currentCallStartTime.getTime()) / 1000);
+    // Handle different call states
+    if (call.callDuration && call.callDuration > 0) {
+      // Completed call - show stored duration
+      setCallTimer(call.callDuration);
+      setIsTimerRunning(false);
+    } else if (call.status === 'in_progress' && call.callStartedAt) {
+      // In-progress call - resume timer from where it left off
+      const startTime = new Date(call.callStartedAt);
+      const elapsed = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
       setCallTimer(elapsed);
+      setCallStartTime(startTime);
+      setIsTimerRunning(true);
     } else {
-      // New call - start fresh
+      // New call - timer not started yet
       setCallTimer(0);
-      currentCallStartTime = now;
-      setCallStartTime(currentCallStartTime);
-    }
-    
-    setIsTimerRunning(true);
-    
-    // Update call status to in_progress when opened
-    if (call.status === 'new') {
-      updateCallMutation.mutate({
-        callId: call.id,
-        updates: { 
-          status: 'in_progress',
-          callStartedAt: currentCallStartTime.toISOString(),
-          agentId: user?.id
-        }
-      });
+      setIsTimerRunning(false);
     }
     
     setShowCustomerModal(true);
   };
 
   const handleEndCall = (callId: string, remarks?: string) => {
-    // Stop timer
+    // Stop timer and calculate duration
     setIsTimerRunning(false);
+    const duration = callTimer; // Duration in seconds
     
     updateCallMutation.mutate({
       callId,
       updates: { 
         status: 'called',
         callEndedAt: new Date().toISOString(),
+        callDuration: duration,
         callRemarks: remarks || null
       }
     });
@@ -202,18 +207,56 @@ export default function CallList() {
     }, 300);
   };
 
-  const handleMarkUnattended = (callId: string) => {
-    // Stop timer
+  const handleMarkUnattended = (callId: string, remarks?: string) => {
+    // Stop timer and calculate duration
     setIsTimerRunning(false);
+    const duration = callTimer; // Duration in seconds
     
     updateCallMutation.mutate({
       callId,
       updates: { 
         status: 'unattended',
-        callEndedAt: new Date().toISOString()
+        callEndedAt: new Date().toISOString(),
+        callDuration: duration,
+        callRemarks: remarks || null
       }
     });
     setShowCustomerModal(false);
+  };
+
+  const handleMarkCallback = (callId: string, remarks?: string) => {
+    // Stop timer and calculate duration
+    setIsTimerRunning(false);
+    const duration = callTimer; // Duration in seconds
+    
+    updateCallMutation.mutate({
+      callId,
+      updates: { 
+        status: 'callback',
+        callEndedAt: new Date().toISOString(),
+        callDuration: duration,
+        callRemarks: remarks || null
+      }
+    });
+    setShowCustomerModal(false);
+  };
+
+  const handleAnswered = (callId: string) => {
+    // Start timer when "Answered" is pressed
+    const now = new Date();
+    setCallStartTime(now);
+    setCallTimer(0);
+    setIsTimerRunning(true);
+    
+    // Update status to in_progress and record call start time
+    updateCallMutation.mutate({
+      callId,
+      updates: { 
+        status: 'in_progress',
+        callStartedAt: now.toISOString(),
+        agentId: user?.id
+      }
+    });
   };
 
 
@@ -340,6 +383,7 @@ export default function CallList() {
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="called">Called</SelectItem>
                 <SelectItem value="unattended">Unattended</SelectItem>
+                <SelectItem value="callback">Callback</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
@@ -382,7 +426,6 @@ export default function CallList() {
                       <TableHead>Phone</TableHead>
                       <TableHead>Order</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Call Status</TableHead>
                       <TableHead>Order Status</TableHead>
                       <TableHead>Action</TableHead>
                     </TableRow>
@@ -412,14 +455,6 @@ export default function CallList() {
                         <TableCell>{call.orderSku}</TableCell>
                         <TableCell>{formatCurrency(Number(call.currentPrice))}</TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(call.status)}>
-                            {call.status === 'new' ? 'Call' : 
-                             call.status === 'called' ? 'Called' : 
-                             call.status === 'unattended' ? 'Unattended' :
-                             call.status.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <Badge variant={call.status === 'completed' && call.isUpsell ? 'default' : 'secondary'}>
                             {call.status === 'completed' ? (call.isUpsell ? 'Purchased' : 'Reservation') : '-'}
                           </Badge>
@@ -429,12 +464,14 @@ export default function CallList() {
                             size="sm"
                             onClick={() => handleCallClick(call)}
                             disabled={call.status === 'completed'}
-                            data-testid={`button-call-${call.id}`}
+                            data-testid={`button-dial-${call.id}`}
+                            className={getDialButtonStyle(call.status)}
                           >
                             <Phone className="h-4 w-4 mr-2" />
                             {call.status === 'completed' ? 'Completed' : 
                              call.status === 'called' ? 'Called' :
-                             call.status === 'unattended' ? 'Unattended' : 'Call'}
+                             call.status === 'unattended' ? 'Unattended' :
+                             call.status === 'callback' ? 'Callback' : 'Dial'}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -457,6 +494,8 @@ export default function CallList() {
           call={selectedCall}
           onEndCall={handleEndCall}
           onMarkUnattended={handleMarkUnattended}
+          onMarkCallback={handleMarkCallback}
+          onAnswered={handleAnswered}
           callTimer={formatCallTimer(callTimer)}
         />
 

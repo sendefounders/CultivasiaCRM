@@ -5,7 +5,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum('user_role', ['admin', 'agent']);
-export const callStatusEnum = pgEnum('call_status', ['new', 'in_progress', 'called', 'unattended', 'completed']);
+export const callStatusEnum = pgEnum('call_status', ['new', 'in_progress', 'called', 'unattended', 'callback', 'completed']);
 export const callTypeEnum = pgEnum('call_type', ['confirmation', 'promo']);
 
 export const users = pgTable("users", {
@@ -65,6 +65,7 @@ export const transactions = pgTable("transactions", {
   agentId: varchar("agent_id").references(() => users.id),
   callStartedAt: timestamp("call_started_at"),
   callEndedAt: timestamp("call_ended_at"),
+  callDuration: integer("call_duration"), // Duration in seconds
   callRemarks: text("call_remarks"),
   // Upsell fields (nullable for original orders)
   originalOrderSku: text("original_order_sku"),
