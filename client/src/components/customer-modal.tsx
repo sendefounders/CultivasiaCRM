@@ -200,12 +200,18 @@ export function CustomerModal({
       switch (remarksAction) {
         case 'end_call':
           onEndCall(call.id, remarks, capturedDuration || undefined);
+          // Close modal immediately after calling onEndCall
+          onClose();
           break;
         case 'callback':
           onMarkCallback(call.id, remarks, capturedDuration || undefined);
+          // Close modal immediately after calling onMarkCallback
+          onClose();
           break;
         case 'unattended':
           onMarkUnattended(call.id, remarks, capturedDuration || undefined);
+          // Close modal immediately after calling onMarkUnattended
+          onClose();
           break;
       }
       setShowRemarksInput(false);
