@@ -115,9 +115,12 @@ export function CustomerModal({
   const handleEndCallClick = () => {
     // Stop timer and capture duration when End Call is clicked
     const duration = onStopTimer();
-    setCapturedDuration(duration);
-    setRemarksAction('end_call');
-    setShowRemarksInput(true);
+    
+    // Immediately end the call with current remarks (no additional UI)
+    if (call) {
+      onEndCall(call.id, remarks, duration);
+      onClose();
+    }
   };
 
   const handleCallbackClick = () => {
