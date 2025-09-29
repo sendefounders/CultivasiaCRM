@@ -267,6 +267,21 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/transactions/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const transaction = await storage.getTransaction(id);
+      
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      res.json(transaction);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch transaction" });
+    }
+  });
+
   app.put("/api/transactions/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
