@@ -14,7 +14,7 @@ interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   call: Transaction | null;
-  onEndCall: (callId: string, remarks?: string, duration?: number) => void;
+  onEndCall: (callId: string, remarks?: string, duration?: number, hasOrdersPlacedThisCall?: boolean) => void;
   onMarkUnattended: (callId: string, remarks?: string, duration?: number) => void;
   onMarkCallback: (callId: string, remarks?: string, duration?: number) => void;
   onAnswered: (callId: string) => void;
@@ -116,9 +116,12 @@ export function CustomerModal({
     // Stop timer and capture duration when End Call is clicked
     const duration = onStopTimer();
     
+    // Check if any orders were placed during this call session
+    const hasOrdersPlacedThisCall = placedOrders.length > 0;
+    
     // Immediately end the call with current remarks (no additional UI)
     if (call) {
-      onEndCall(call.id, remarks, duration);
+      onEndCall(call.id, remarks, duration, hasOrdersPlacedThisCall);
       onClose();
     }
   };
