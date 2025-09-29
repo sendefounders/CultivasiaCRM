@@ -217,6 +217,7 @@ export default function CallList() {
           }),
           // Update call completion data - use 'completed' if there's order data, 'called' otherwise
           status: hasOrder ? 'completed' : 'called',
+          date: new Date(), // Set current date for dashboard stats
           callEndedAt: new Date(),
           callDuration: finalDuration,
           callRemarks: remarks || null
@@ -231,6 +232,7 @@ export default function CallList() {
         callId,
         updates: { 
           status: 'called', // Default to 'called' if we can't verify upsell data
+          date: new Date(), // Set current date for dashboard stats
           callEndedAt: new Date(),
           callDuration: finalDuration,
           callRemarks: remarks || null
@@ -262,6 +264,7 @@ export default function CallList() {
         }),
         // Update call completion data
         status: 'unattended',
+        date: new Date(), // Set current date for dashboard stats
         callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
@@ -305,6 +308,7 @@ export default function CallList() {
         }),
         // Update call completion data
         status: 'callback',
+        date: new Date(), // Set current date for dashboard stats
         callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
@@ -339,6 +343,7 @@ export default function CallList() {
       callId,
       updates: { 
         status: 'in_progress',
+        date: new Date(), // Set current date for dashboard stats
         callStartedAt: now,
         agentId: user?.id
       }
@@ -377,7 +382,8 @@ export default function CallList() {
           revenue: (Number(finalPrice) - Number(call.originalPrice || call.currentPrice)).toString(),
           isUpsell: true,
           // Keep call in_progress so agent can continue workflow (place more orders, end call, etc.)
-          status: 'in_progress'
+          status: 'in_progress',
+          date: new Date() // Set current date for dashboard stats
           // Don't set callDuration or callEndedAt - timer should keep running
         }
       });
@@ -549,7 +555,12 @@ export default function CallList() {
                   </TableHeader>
                   <TableBody>
                     {filteredCalls?.map((call) => (
-                      <TableRow key={call.id} data-testid={`call-row-${call.id}`}>
+                      <TableRow 
+                        key={call.id} 
+                        data-testid={`call-row-${call.id}`}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleCallClick(call)}
+                      >
                         <TableCell>{formatDate(call.date)}</TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
