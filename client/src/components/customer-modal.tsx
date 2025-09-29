@@ -50,6 +50,7 @@ export function CustomerModal({
   const [manualMode, setManualMode] = useState(false);
   const [newProductSku, setNewProductSku] = useState("");
   const [newPrice, setNewPrice] = useState("");
+  const [placedOrders, setPlacedOrders] = useState<Array<{sku: string, name: string, price: string}>>([]);
 
   // Fetch products for upsell functionality
   const { data: products } = useQuery<Product[]>({
@@ -83,6 +84,17 @@ export function CustomerModal({
       setCallPhase('initial');
     }
   }, [call?.status]);
+
+  // Reset placed orders when modal opens with a new call
+  useEffect(() => {
+    if (isOpen && call) {
+      setPlacedOrders([]);
+      setShowUpsellSection(false);
+      setManualMode(false);
+      setNewProductSku("");
+      setNewPrice("");
+    }
+  }, [isOpen, call?.id]);
 
   // Helper to determine if call can still be acted upon
   const isCallActionable = () => {
@@ -135,6 +147,14 @@ export function CustomerModal({
   const handleAcceptSuggested = () => {
     if (call && suggestedProduct) {
       onAcceptUpsell(call.id, suggestedProduct.sku, undefined, capturedDuration || undefined);
+      
+      // Add to placed orders list
+      setPlacedOrders(prev => [...prev, {
+        sku: suggestedProduct.sku,
+        name: suggestedProduct.name,
+        price: suggestedProduct.price
+      }]);
+      
       setShowUpsellSection(false);
       // DO NOT close modal - agents can add more orders
       toast({
@@ -149,6 +169,14 @@ export function CustomerModal({
       const price = parseFloat(newPrice);
       if (!isNaN(price)) {
         onAcceptUpsell(call.id, newProductSku.trim(), price, capturedDuration || undefined);
+        
+        // Add to placed orders list
+        setPlacedOrders(prev => [...prev, {
+          sku: newProductSku.trim(),
+          name: newProductSku.trim(), // Use SKU as name for manual entries
+          price: newPrice.trim()
+        }]);
+        
         setShowUpsellSection(false);
         setNewProductSku("");
         setNewPrice("");
@@ -340,6 +368,33 @@ export function CustomerModal({
               )}
             </div>
           </div>
+
+          {/* Orders Placed During This Call */}
+          {placedOrders.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Orders Placed This Call</h4>
+              <div className="space-y-2">
+                {placedOrders.map((order, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid={`placed-order-${index}`}>
+                    <div>
+                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                        {order.name}
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        SKU: {order.sku}
+                      </p>
+                    </div>
+                    <div className="text-sm font-semibold text-green-800 dark:text-green-300">
+                      {formatCurrency(Number(order.price))}
+                    </div>
+                  </div>
+                ))}
+                <div className="text-xs text-muted-foreground text-center pt-2">
+                  {placedOrders.length} order{placedOrders.length !== 1 ? 's' : ''} placed during this call
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Call Remarks Input */}
           {showRemarksInput && (
