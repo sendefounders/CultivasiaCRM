@@ -267,38 +267,32 @@ export default function CallList() {
         ? customPrice.toString() 
         : newProduct?.price || '0';
       
-      // Use provided duration or current timer value
-      const finalDuration = duration !== undefined ? duration : callTimer;
-      
-      // Update existing transaction with upsell information
+      // During order placement, don't complete the call or stop timer
+      // Only update order information, keep call in_progress
       updateCallMutation.mutate({
         callId: call.id,
         updates: {
-          // Store original order info
-          originalOrderSku: call.orderSku,
-          originalPrice: call.currentPrice,
+          // Store original order info if not already stored
+          originalOrderSku: call.originalOrderSku || call.orderSku,
+          originalPrice: call.originalPrice || call.currentPrice,
           // Update to new product
           orderSku: newProductSku,
           currentPrice: finalPrice,
-          // Calculate revenue and mark as upsell
-          revenue: (Number(finalPrice) - Number(call.currentPrice)).toString(),
+          // Calculate revenue
+          revenue: (Number(finalPrice) - Number(call.originalPrice || call.currentPrice)).toString(),
           isUpsell: true,
-          status: 'completed',
-          // Persist call timing data
-          callDuration: finalDuration,
-          callEndedAt: new Date().toISOString()
+          // Keep call in_progress so timer continues - don't mark as completed yet
+          status: 'in_progress'
+          // Don't set callDuration or callEndedAt - timer should keep running
         }
       });
       
-      // Reset timer state after successful upsell
-      setCallTimer(0);
-      setIsTimerRunning(false);
-      setCallStartTime(null);
+      // Don't reset timer state - let it keep running
       
       const productName = newProduct?.name || newProductSku;
       toast({
-        title: "Upsell Accepted",
-        description: `Successfully upsold ${call.customerName} to ${productName}`,
+        title: "Order Created",
+        description: `Successfully created order for ${productName}`,
       });
     } else {
       toast({
