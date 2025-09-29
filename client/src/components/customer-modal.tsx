@@ -137,10 +137,7 @@ export function CustomerModal({
   };
 
   const handleNewOrderClick = () => {
-    // Stop timer and capture duration when New Order is clicked
-    const duration = onStopTimer();
-    setCapturedDuration(duration);
-    // Show inline upsell section
+    // Show inline upsell section - timer continues running
     setShowUpsellSection(true);
   };
 
