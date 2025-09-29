@@ -411,7 +411,7 @@ export function CustomerModal({
                 placeholder="Take notes during the call..."
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                className="min-h-[120px] resize-none"
+                className="min-h-[120px] resize-none border border-input"
                 data-testid="textarea-live-notes"
               />
             </div>
@@ -616,10 +616,10 @@ export function CustomerModal({
                     <Button
                       onClick={handleEndCallClick}
                       className="w-full bg-red-600 hover:bg-red-700 text-white"
-                      data-testid="button-end-call"
+                      data-testid="button-save-end-call"
                     >
                       <PhoneOff className="h-4 w-4 mr-2" />
-                      End Call
+                      Save & End Call
                     </Button>
                     <Button
                       onClick={handleCallbackClick}
@@ -642,28 +642,6 @@ export function CustomerModal({
                 </div>
               )}
 
-              {/* Save Notes Button - Always visible when there are notes */}
-              {remarks.trim() && showRemarksInput && (
-                <div className="space-y-2">
-                  <Button
-                    onClick={handleSaveRemarks}
-                    className="w-full"
-                    data-testid="button-save-remarks"
-                  >
-                    <PhoneOff className="h-4 w-4 mr-2" />
-                    {remarksAction === 'callback' ? 'Save & Mark Callback' : 
-                     remarksAction === 'unattended' ? 'Save & Mark Unattended' : 'Save & End Call'}
-                  </Button>
-                  <Button
-                    onClick={() => setShowRemarksInput(false)}
-                    variant="outline"
-                    className="w-full"
-                    data-testid="button-cancel-remarks"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
             </div>
           )}
           </div>
