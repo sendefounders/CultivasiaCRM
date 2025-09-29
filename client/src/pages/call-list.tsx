@@ -194,22 +194,23 @@ export default function CallList() {
       });
       const freshCall = await response.json();
       
+      // Check if there's any order placed (either orderSku exists OR isUpsell is true)
+      const hasOrder = freshCall?.orderSku || freshCall?.isUpsell;
+      
       updateCallMutation.mutate({
         callId,
         updates: { 
           // Preserve all existing order data if it exists (from fresh data)
-          ...(freshCall?.originalOrderSku && {
+          ...(hasOrder && {
             originalOrderSku: freshCall.originalOrderSku,
             originalPrice: freshCall.originalPrice,
             orderSku: freshCall.orderSku,
             currentPrice: freshCall.currentPrice,
             revenue: freshCall.revenue,
-            isUpsell: freshCall.isUpsell
+            isUpsell: true  // Always set to true if there's any order
           }),
-          // Set isUpsell to true if there's any order data (from fresh data)
-          ...(freshCall?.originalOrderSku && { isUpsell: true }),
           // Update call completion data - use 'completed' if there's order data, 'called' otherwise
-          status: freshCall?.originalOrderSku ? 'completed' : 'called',
+          status: hasOrder ? 'completed' : 'called',
           callEndedAt: new Date(),
           callDuration: finalDuration,
           callRemarks: remarks || null
