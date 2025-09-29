@@ -257,7 +257,7 @@ export default function CallList() {
 
 
 
-  const handleAcceptUpsell = (callId: string, newProductSku: string, customPrice?: number) => {
+  const handleAcceptUpsell = (callId: string, newProductSku: string, customPrice?: number, duration?: number) => {
     const call = calls?.find(c => c.id === callId);
     const newProduct = products?.find(p => p.sku === newProductSku);
     
@@ -266,6 +266,9 @@ export default function CallList() {
       const finalPrice = customPrice !== undefined 
         ? customPrice.toString() 
         : newProduct?.price || '0';
+      
+      // Use provided duration or current timer value
+      const finalDuration = duration !== undefined ? duration : callTimer;
       
       // Update existing transaction with upsell information
       updateCallMutation.mutate({
@@ -280,9 +283,17 @@ export default function CallList() {
           // Calculate revenue and mark as upsell
           revenue: (Number(finalPrice) - Number(call.currentPrice)).toString(),
           isUpsell: true,
-          status: 'completed'
+          status: 'completed',
+          // Persist call timing data
+          callDuration: finalDuration,
+          callEndedAt: new Date().toISOString()
         }
       });
+      
+      // Reset timer state after successful upsell
+      setCallTimer(0);
+      setIsTimerRunning(false);
+      setCallStartTime(null);
       
       const productName = newProduct?.name || newProductSku;
       toast({
