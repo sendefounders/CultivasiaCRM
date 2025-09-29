@@ -202,8 +202,8 @@ export default function CallList() {
           revenue: call.revenue,
           isUpsell: call.isUpsell
         }),
-        // Update call completion data
-        status: 'called',
+        // Update call completion data - use 'completed' if there's an upsell, 'called' otherwise
+        status: call?.isUpsell ? 'completed' : 'called',
         callEndedAt: new Date(),
         callDuration: finalDuration,
         callRemarks: remarks || null
