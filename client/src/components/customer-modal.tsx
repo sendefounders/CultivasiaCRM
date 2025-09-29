@@ -19,7 +19,7 @@ interface CustomerModalProps {
   onMarkCallback: (callId: string, remarks?: string, duration?: number) => void;
   onAnswered: (callId: string) => void;
   onStopTimer: () => number; // Returns the current timer duration
-  onAcceptUpsell: (callId: string, newProductSku: string, customPrice?: number) => void; // Upsell handler
+  onAcceptUpsell: (callId: string, newProductSku: string, customPrice?: number, duration?: number) => void; // Upsell handler with duration
   callTimer?: string;
 }
 
@@ -134,7 +134,7 @@ export function CustomerModal({
 
   const handleAcceptSuggested = () => {
     if (call && suggestedProduct) {
-      onAcceptUpsell(call.id, suggestedProduct.sku);
+      onAcceptUpsell(call.id, suggestedProduct.sku, undefined, capturedDuration || undefined);
       setShowUpsellSection(false);
       onClose();
       toast({
@@ -148,7 +148,7 @@ export function CustomerModal({
     if (call && newProductSku.trim() && newPrice.trim()) {
       const price = parseFloat(newPrice);
       if (!isNaN(price)) {
-        onAcceptUpsell(call.id, newProductSku.trim(), price);
+        onAcceptUpsell(call.id, newProductSku.trim(), price, capturedDuration || undefined);
         setShowUpsellSection(false);
         setNewProductSku("");
         setNewPrice("");
