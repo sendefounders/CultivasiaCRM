@@ -106,6 +106,7 @@ flowchart LR
   E --> H[Import Calls -> POST /api/calls/import]
 
 
+```
 ### Auth API (from server/auth.ts)
 
 | Method | Path          | Purpose                          | Notes |
@@ -234,6 +235,7 @@ sequenceDiagram
   BE-->>FE: 200 { user }
   FE->>U: redirect to /dashboard
 
+```
 ### Flow 3 — Transactions list + filters
 
 **Why (one line):** Managers/agents use this table every day. If filters or the API call are wrong, the page becomes useless.
@@ -284,17 +286,16 @@ GET /api/transactions?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD&status=...&agentId=.
 
 **Diagram (visual story):**
 ```mermaid
-flowchart LR
 A[FE /transactions] -- GET /api/transactions?filters --> B[BE (routes.ts)]
 B --> C[(DB: transactions)]
 C --> B --> A[Render table]
 A -- change filter --> A
 A -- refetch with new query params --> B
 
-flowchart LR
   A[FE /transactions] -- GET /api/transactions?filters --> B[BE (routes.ts)]
   B --> C[(DB: transactions)]
   C --> B --> A[Render table]
   A -- change filter --> A
   A -- refetch with new query params --> B
 
+```
