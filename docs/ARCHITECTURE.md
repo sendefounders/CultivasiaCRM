@@ -286,16 +286,10 @@ GET /api/transactions?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD&status=...&agentId=.
 
 **Diagram (visual story):**
 ```mermaid
-A[FE /transactions] -- GET /api/transactions?filters --> B[BE (routes.ts)]
-B --> C[(DB: transactions)]
-C --> B --> A[Render table]
-A -- change filter --> A
-A -- refetch with new query params --> B
-
+flowchart LR
   A[FE /transactions] -- GET /api/transactions?filters --> B[BE (routes.ts)]
   B --> C[(DB: transactions)]
   C --> B --> A[Render table]
   A -- change filter --> A
   A -- refetch with new query params --> B
-
 ```
