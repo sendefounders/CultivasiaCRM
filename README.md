@@ -1,6 +1,8 @@
 # Cultivasia CRM
 First test commit!
 
+AKo si Uging
+
 # Cultivasia CRM
 
 A lean CRM built for telemarketing operations at Cultivasia.  
@@ -15,3 +17,5 @@ This is also our **test project** before building Sende (profitability SaaS).
    ```bash
    git clone https://github.com/<your-username>/cultivasia-crm.git
    cd cultivasia-crm
+
+
