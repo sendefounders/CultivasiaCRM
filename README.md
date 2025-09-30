@@ -1,8 +1,6 @@
 # Cultivasia CRM
 First test commit!
 
-AKo si Uging
-
 # Cultivasia CRM
 
 A lean CRM built for telemarketing operations at Cultivasia.  
