@@ -100,12 +100,14 @@ flowchart LR
   A[FE /transactions]
   B[BE (routes.ts)]
   C[(DB: transactions)]
+
   A --|GET /api/transactions?filters|--> B
   B --> C
   C --> B
-  B --> A
+  B --> A[Render table]
+
   A --|change filter|--> A
-  A --|refetch with new params|--> B
+  A --|refetch with new query params|--> B
 ```
 ### Auth API (from server/auth.ts)
 
