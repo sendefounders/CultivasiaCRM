@@ -97,15 +97,15 @@ It helps us debug faster, onboard easier, and stay consistent.
 
 ```mermaid
 flowchart LR
-  A[Login /auth] -->|valid| B[Dashboard]
-  B --> C[Calls /calls]
-  B --> D[Transactions /transactions]
-  B --> E[Setup /setup]
-  C --> F[Create Call -> POST /api/calls]
-  D --> G[Filter Transactions -> GET /api/transactions?filters]
-  E --> H[Import Calls -> POST /api/calls/import]
-
-
+  A[FE /transactions]
+  B[BE (routes.ts)]
+  C[(DB: transactions)]
+  A --|GET /api/transactions?filters|--> B
+  B --> C
+  C --> B
+  B --> A
+  A --|change filter|--> A
+  A --|refetch with new params|--> B
 ```
 ### Auth API (from server/auth.ts)
 
