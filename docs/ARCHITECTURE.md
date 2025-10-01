@@ -95,20 +95,20 @@ It helps us debug faster, onboard easier, and stay consistent.
 
 ## App Flow (High-Level)
 
+
+
 ```mermaid
-flowchart LR
-  A[FE /transactions]
-  B[BE (routes.ts)]
-  C[(DB: transactions)]
+flowchart LR;
+  auth[Login /auth] -->|valid| dash[Dashboard];
+  dash --> calls[Calls /calls];
+  dash --> txns[Transactions /transactions];
+  dash --> setup[Setup /setup];
 
-  A --|GET /api/transactions?filters|--> B
-  B --> C
-  C --> B
-  B --> A[Render table]
-
-  A --|change filter|--> A
-  A --|refetch with new query params|--> B
+  calls --|POST /api/calls|--> api((API));
+  txns --|GET /api/transactions?filters|--> api;
+  setup --|POST /api/calls/import|--> api;
 ```
+
 ### Auth API (from server/auth.ts)
 
 | Method | Path          | Purpose                          | Notes |
@@ -222,22 +222,25 @@ The CRM uses a Postgres database (via Supabase/Storage) with the following core 
 - After login, frontend should call **`/api/user`** before redirecting.
 
 **Diagram (visual story):**
+
+
+
 ```mermaid
-sequenceDiagram
-  participant U as User
-  participant FE as Frontend (/auth)
-  participant BE as Backend (auth.ts)
-  participant DB as DB (users & sessions)
+sequenceDiagram;
+  participant U as User;
+  participant FE as Frontend (/auth);
+  participant BE as Backend (auth.ts);
+  participant DB as DB (users & sessions);
 
-  U->>FE: type username + password
-  FE->>BE: POST /api/login (credentials: include)
-  BE->>DB: validate user (check password)
-  BE-->>FE: 200 + set session cookie
-  FE->>BE: GET /api/user (credentials: include)
-  BE-->>FE: 200 { user }
-  FE->>U: redirect to /dashboard
-
+  U->>FE: type username + password;
+  FE->>BE: POST /api/login (credentials: include);
+  BE->>DB: validate user (check password);
+  BE-->>FE: 200 + set session cookie;
+  FE->>BE: GET /api/user (credentials: include);
+  BE-->>FE: 200 { user };
+  FE->>U: redirect to /dashboard;
 ```
+
 ### Flow 3 — Transactions list + filters
 
 **Why (one line):** Managers/agents use this table every day. If filters or the API call are wrong, the page becomes useless.
@@ -287,11 +290,20 @@ GET /api/transactions?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD&status=...&agentId=.
 - `GET /api/transactions?search=0927xxxxxxx&isUpsell=true`
 
 **Diagram (visual story):**
+
+
 ```mermaid
-flowchart LR
-  A[FE /transactions] -- GET /api/transactions?filters --> B[BE (routes.ts)]
-  B --> C[(DB: transactions)]
-  C --> B --> A[Render table]
-  A -- change filter --> A
-  A -- refetch with new query params --> B
+flowchart LR;
+  A["FE /transactions"];
+  B["Backend (routes)"];
+  C["DB: transactions"];
+
+  A --|GET /api/transactions?filters|--> B;
+  B --> C;
+  C --> B;
+  B --> A["Render table"];
+  A --|change filter|--> A;
+  A --|refetch with new query params|--> B;
 ```
+
+
