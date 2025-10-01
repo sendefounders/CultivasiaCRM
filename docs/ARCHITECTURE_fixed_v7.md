@@ -189,9 +189,18 @@ GET /api/transactions?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD&status=...&agentId=.
 **Diagram (visual story):**
 
 ```mermaid
-flowchart LR
-A[FE /transactions] -- GET /api/transactions?filters --> B[BE (routes.ts)]
-B --> C[(DB: transactions)]
-C --> B --> A[Render table]
-A -- change filter --> A
-A -- refetch with new query params --> B
+sequenceDiagram
+  participant U as User
+  participant FE as Frontend (/auth)
+  participant BE as Backend (auth.ts)
+  participant DB as DB (users & sessions)
+
+  U->>FE: type username + password
+  FE->>BE: POST /api/login (credentials: include)
+  BE->>DB: validate user (check password)
+  BE-->>FE: 200 + set session cookie
+  FE->>BE: GET /api/user (credentials: include)
+  BE-->>FE: 200 { user }
+  FE->>U: redirect to /dashboard
+
+```
