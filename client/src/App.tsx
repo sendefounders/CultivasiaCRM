@@ -1,39 +1,69 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/use-auth";
-import Dashboard from "@/pages/dashboard";
-import AuthPage from "@/pages/auth-page";
-import CallList from "@/pages/call-list";
-import Setup from "@/pages/setup";
-import NotFound from "@/pages/not-found";
-import { ProtectedRoute } from "./lib/protected-route";
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { login, getMe } from './api';
 
-function Router() {
+function LoginPage() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState('');
+  const navigate = useNavigate();
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus('Logging in…');
+    try {
+      await login(username, password);
+      const who = await getMe();
+      console.log('User:', who);
+      setStatus('Login success!');
+      navigate('/dashboard');
+    } catch (err: any) {
+      setStatus(err.message || 'Login failed');
+    }
+  }
+
   return (
-    <Switch>
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/call-list" component={CallList} />
-      <ProtectedRoute path="/setup" component={Setup} />
-      <Route path="/auth" component={AuthPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <div style={{ maxWidth: 420, margin: '48px auto', fontFamily: 'Inter, system-ui, Arial' }}>
+      <h1>Cultivasia CRM (dev)</h1>
+
+      <form onSubmit={handleLogin} style={{ display: 'grid', gap: 10 }}>
+        <input
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          placeholder="username"
+          style={{ padding: 8 }}
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="password"
+          style={{ padding: 8 }}
+        />
+        <button type="submit" style={{ padding: '8px 12px' }}>Log in</button>
+      </form>
+
+      <div style={{ marginTop: 10 }}>{status}</div>
+    </div>
   );
 }
 
-function App() {
+function Dashboard() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <div style={{ maxWidth: 600, margin: '48px auto', fontFamily: 'Inter, system-ui, Arial' }}>
+      <h1>Dashboard</h1>
+      <p>Welcome! You are logged in 🎉</p>
+    </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

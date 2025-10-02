@@ -1,490 +1,103 @@
-import { 
-  users, calls, products, transactions, callHistory,
-  type User, type InsertUser, type Call, type InsertCall,
-  type Product, type InsertProduct, type Transaction, type InsertTransaction,
-  type CallHistory, type InsertCallHistory
-} from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, asc, and, gte, lte, sql, count, sum } from "drizzle-orm";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as schema from "@shared/schema";
+import { pool as sharedPool } from "./db";
 
-const PostgresSessionStore = connectPg(session);
-
-export interface IStorage {
-  // Users
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, updates: Partial<InsertUser>): Promise<User | undefined>;
-  getAllAgents(): Promise<User[]>;
-
-  // Products
-  getAllProducts(): Promise<Product[]>;
-  getProduct(id: string): Promise<Product | undefined>;
-  getProductBySku(sku: string): Promise<Product | undefined>;
-  createProduct(product: InsertProduct): Promise<Product>;
-  updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined>;
-
-  // Calls (legacy - keeping for backward compatibility)
-  getAllCalls(filters?: CallFilters): Promise<Call[]>;
-  getCall(id: string): Promise<Call | undefined>;
-  createCall(call: InsertCall): Promise<Call>;
-  updateCall(id: string, updates: Partial<InsertCall>): Promise<Call | undefined>;
-  assignCallToAgent(callId: string, agentId: string): Promise<Call | undefined>;
-  getCallsByAgent(agentId: string): Promise<Call[]>;
-  checkDuplicateCall(phone: string, date: Date): Promise<Call | undefined>;
-
-  // Transactions (now primary entity)
-  getAllTransactions(filters?: TransactionFilters): Promise<Transaction[]>;
-  getTransaction(id: string): Promise<Transaction | undefined>;
-  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
-  updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined>;
-  assignTransactionToAgent(transactionId: string, agentId: string): Promise<Transaction | undefined>;
-  getTransactionsByAgent(agentId: string): Promise<Transaction[]>;
-  checkDuplicateTransaction(phone: string, date: Date): Promise<Transaction | undefined>;
-
-  // Call History (now references transactions)
-  getCallHistory(callId: string): Promise<CallHistory[]>;
-  getTransactionHistory(transactionId: string): Promise<CallHistory[]>;
-  addCallHistory(history: InsertCallHistory): Promise<CallHistory>;
-
-  // Analytics
-  getDashboardStats(agentId?: string): Promise<DashboardStats>;
-  getAgentPerformance(): Promise<AgentPerformance[]>;
-
-  sessionStore: any;
+export interface User {
+  id: string;
+  username: string | null;
+  email: string | null;
+  password: string; // unified field (DB column: password_hash)
+  role: string;
 }
 
-export interface CallFilters {
-  dateFrom?: Date;
-  dateTo?: Date;
-  status?: string;
-  agentId?: string;
-  callType?: string;
-  search?: string;
+export interface InsertUser {
+  username: string;
+  email: string;
+  password_hash: string; // already-hashed with scrypt
+  role: string;
 }
 
-export interface TransactionFilters {
-  dateFrom?: Date;
-  dateTo?: Date;
-  status?: string;
-  agentId?: string;
-  callType?: string;
-  search?: string;
-  isUpsell?: boolean;
-}
+export class DatabaseStorage {
+  private pool: Pool;
+  private db: any;
 
-export interface DashboardStats {
-  totalCallsToday: number;
-  successfulUpsells: number;
-  revenueToday: number;
-  conversionRate: number;
-  callsByStatus: { status: string; count: number }[];
-  revenueByDay: { date: string; revenue: number }[];
-}
-
-export interface AgentPerformance {
-  agent: User;
-  callsHandled: number;
-  upsellsClosed: number;
-  conversionRate: number;
-  revenue: number;
-  averageHandlingTime: number;
-}
-
-export class DatabaseStorage implements IStorage {
-  sessionStore: any;
-
-  constructor() {
-    this.sessionStore = new PostgresSessionStore({ 
-      pool, 
-      createTableIfMissing: true 
-    });
+  constructor(pool: Pool) {
+    this.pool = pool;
+    this.db = drizzle(pool, { schema });
   }
 
-  // Users
+  // --- USERS ---
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    const { rows } = await this.pool.query(
+      `select id, username, email, password_hash as password, role
+       from public.users
+       where id = $1
+       limit 1`,
+      [id]
+    );
+    return rows[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+    const { rows } = await this.pool.query(
+      `select id, username, email, password_hash as password, role
+       from public.users
+       where username = $1
+       limit 1`,
+      [username]
+    );
+    return rows[0];
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const { rows } = await this.pool.query(
+      `insert into public.users (username, email, password_hash, role)
+       values ($1, $2, $3, $4)
+       returning id, username, email, password_hash as password, role`,
+      [user.username, user.email, user.password_hash, user.role]
+    );
+    return rows[0];
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User | undefined> {
-    const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
-    return user || undefined;
-  }
+    const fields: string[] = [];
+    const values: any[] = [];
+    let i = 1;
 
-  async getAllAgents(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.role, 'agent')).orderBy(asc(users.username));
-  }
-
-  // Products
-  async getAllProducts(): Promise<Product[]> {
-    return await db.select().from(products).orderBy(asc(products.sku));
-  }
-
-  async getProduct(id: string): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.id, id));
-    return product || undefined;
-  }
-
-  async getProductBySku(sku: string): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.sku, sku));
-    return product || undefined;
-  }
-
-  async createProduct(product: InsertProduct): Promise<Product> {
-    const [newProduct] = await db.insert(products).values(product).returning();
-    return newProduct;
-  }
-
-  async updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined> {
-    const [product] = await db.update(products).set(updates).where(eq(products.id, id)).returning();
-    return product || undefined;
-  }
-
-  // Calls
-  async getAllCalls(filters?: CallFilters): Promise<Call[]> {
-    let query = db.select().from(calls);
-    
-    const conditions = [];
-    
-    if (filters?.dateFrom) {
-      conditions.push(gte(calls.date, filters.dateFrom));
+    if (updates.username !== undefined) {
+      fields.push(`username = $${i++}`);
+      values.push(updates.username);
     }
-    if (filters?.dateTo) {
-      conditions.push(lte(calls.date, filters.dateTo));
+    if (updates.email !== undefined) {
+      fields.push(`email = $${i++}`);
+      values.push(updates.email);
     }
-    if (filters?.status) {
-      conditions.push(eq(calls.status, filters.status as any));
+    if (updates.password_hash !== undefined) {
+      fields.push(`password_hash = $${i++}`);
+      values.push(updates.password_hash);
     }
-    if (filters?.agentId) {
-      conditions.push(eq(calls.agentId, filters.agentId));
-    }
-    if (filters?.callType) {
-      conditions.push(eq(calls.callType, filters.callType as any));
-    }
-    if (filters?.search) {
-      conditions.push(sql`${calls.customerName} ILIKE ${`%${filters.search}%`} OR ${calls.phone} ILIKE ${`%${filters.search}%`}`);
+    if (updates.role !== undefined) {
+      fields.push(`role = $${i++}`);
+      values.push(updates.role);
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+    if (fields.length === 0) {
+      return this.getUser(id); // nothing to update
     }
 
-    return await query.orderBy(desc(calls.date));
-  }
+    values.push(id);
 
-  async getCall(id: string): Promise<Call | undefined> {
-    const [call] = await db.select().from(calls).where(eq(calls.id, id));
-    return call || undefined;
-  }
-
-  async createCall(call: InsertCall): Promise<Call> {
-    const [newCall] = await db.insert(calls).values(call).returning();
-    return newCall;
-  }
-
-  async updateCall(id: string, updates: Partial<InsertCall>): Promise<Call | undefined> {
-    const updateData = {
-      ...updates,
-      updatedAt: new Date(),
-    };
-    const [call] = await db.update(calls).set(updateData).where(eq(calls.id, id)).returning();
-    return call || undefined;
-  }
-
-  async assignCallToAgent(callId: string, agentId: string): Promise<Call | undefined> {
-    return await this.updateCall(callId, { agentId });
-  }
-
-  async getCallsByAgent(agentId: string): Promise<Call[]> {
-    return await db.select().from(calls).where(eq(calls.agentId, agentId)).orderBy(desc(calls.date));
-  }
-
-  async checkDuplicateCall(phone: string, date: Date): Promise<Call | undefined> {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const [call] = await db.select().from(calls)
-      .where(and(
-        eq(calls.phone, phone),
-        gte(calls.date, dayStart),
-        lte(calls.date, dayEnd)
-      ));
-    return call || undefined;
-  }
-
-  // Transactions
-  async getAllTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
-    let query = db.select().from(transactions);
-    
-    if (filters) {
-      const conditions = [];
-      
-      if (filters.dateFrom) {
-        conditions.push(gte(transactions.date, filters.dateFrom));
-      }
-      if (filters.dateTo) {
-        conditions.push(lte(transactions.date, filters.dateTo));
-      }
-      if (filters.status) {
-        conditions.push(eq(transactions.status, filters.status));
-      }
-      if (filters.agentId) {
-        conditions.push(eq(transactions.agentId, filters.agentId));
-      }
-      if (filters.callType) {
-        conditions.push(eq(transactions.callType, filters.callType));
-      }
-      if (filters.search) {
-        conditions.push(
-          sql`${transactions.customerName} ILIKE ${'%' + filters.search + '%'} OR ${transactions.phone} ILIKE ${'%' + filters.search + '%'} OR ${transactions.orderSku} ILIKE ${'%' + filters.search + '%'}`
-        );
-      }
-      if (filters.isUpsell !== undefined) {
-        conditions.push(eq(transactions.isUpsell, filters.isUpsell));
-      }
-      
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
-    }
-    
-    return await query.orderBy(desc(transactions.createdAt));
-  }
-  
-  async getTransaction(id: string): Promise<Transaction | undefined> {
-    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
-    return transaction || undefined;
-  }
-
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    // Enforce data consistency for new transactions
-    const consistentTransaction = this.enforceStatusTimestampConsistency(transaction);
-    
-    const [newTransaction] = await db.insert(transactions).values(consistentTransaction).returning();
-    return newTransaction;
-  }
-  
-  async updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined> {
-    // Enforce data consistency between status and timestamps
-    const consistentUpdates = this.enforceStatusTimestampConsistency(updates);
-    
-    const [updatedTransaction] = await db.update(transactions)
-      .set({ ...consistentUpdates, updatedAt: new Date() })
-      .where(eq(transactions.id, id))
-      .returning();
-    return updatedTransaction || undefined;
-  }
-
-  private enforceStatusTimestampConsistency(updates: Partial<InsertTransaction>): Partial<InsertTransaction> {
-    const result = { ...updates };
-    
-    // If status is being set to 'new', clear all call-related timestamps
-    if (updates.status === 'new') {
-      result.callStartedAt = null;
-      result.callEndedAt = null;
-      result.callDuration = null;
-    }
-    
-    // If status is being set to 'in_progress', ensure callStartedAt is set
-    if (updates.status === 'in_progress' && !updates.callStartedAt) {
-      result.callStartedAt = new Date();
-    }
-    
-    // If status is being set to completed/called/unattended/callback, ensure callEndedAt is set
-    if (['called', 'completed', 'unattended', 'callback'].includes(updates.status as string)) {
-      if (!updates.callEndedAt) {
-        result.callEndedAt = new Date();
-      }
-    }
-    
-    return result;
-  }
-  
-  async assignTransactionToAgent(transactionId: string, agentId: string): Promise<Transaction | undefined> {
-    return await this.updateTransaction(transactionId, { agentId });
-  }
-  
-  async checkDuplicateTransaction(phone: string, date: Date): Promise<Transaction | undefined> {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const [transaction] = await db.select().from(transactions)
-      .where(and(
-        eq(transactions.phone, phone),
-        gte(transactions.date, dayStart),
-        lte(transactions.date, dayEnd)
-      ));
-    return transaction || undefined;
-  }
-
-  // Legacy method - transactions no longer reference calls
-  async getTransactionsByCall(callId: string): Promise<Transaction[]> {
-    // This method is kept for backward compatibility but returns empty array
-    // since transactions are now the primary entity
-    return [];
-  }
-
-  async getTransactionsByAgent(agentId: string): Promise<Transaction[]> {
-    return await db.select().from(transactions).where(eq(transactions.agentId, agentId)).orderBy(desc(transactions.createdAt));
-  }
-
-  // Call History
-  async getCallHistory(callId: string): Promise<CallHistory[]> {
-    // Legacy method - kept for backward compatibility
-    return [];
-  }
-  
-  async getTransactionHistory(transactionId: string): Promise<CallHistory[]> {
-    return await db.select().from(callHistory).where(eq(callHistory.transactionId, transactionId)).orderBy(desc(callHistory.createdAt));
-  }
-
-  async addCallHistory(history: InsertCallHistory): Promise<CallHistory> {
-    const [newHistory] = await db.insert(callHistory).values(history).returning();
-    return newHistory;
-  }
-
-  // Analytics (now based on transactions as primary entity)
-  async getDashboardStats(agentId?: string): Promise<DashboardStats> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Base conditions for transactions
-    const baseConditions = [
-      gte(transactions.date, today),
-      lte(transactions.date, tomorrow)
-    ];
-
-    if (agentId) {
-      baseConditions.push(eq(transactions.agentId, agentId));
-    }
-
-    // Total calls today (from transactions)
-    const [callsResult] = await db.select({ count: count() })
-      .from(transactions)
-      .where(and(...baseConditions));
-
-    // Successful upsells today
-    const [upsellsResult] = await db.select({ count: count() })
-      .from(transactions)
-      .where(and(
-        gte(transactions.date, today),
-        lte(transactions.date, tomorrow),
-        eq(transactions.isUpsell, true),
-        ...(agentId ? [eq(transactions.agentId, agentId)] : [])
-      ));
-
-    // Revenue today (from upsells only)
-    const [revenueResult] = await db.select({ 
-      total: sum(transactions.revenue) 
-    })
-      .from(transactions)
-      .where(and(
-        gte(transactions.date, today),
-        lte(transactions.date, tomorrow),
-        eq(transactions.isUpsell, true),
-        ...(agentId ? [eq(transactions.agentId, agentId)] : [])
-      ));
-
-    // Calls by status (from transactions)
-    const statusResults = await db.select({
-      status: transactions.status,
-      count: count()
-    })
-      .from(transactions)
-      .where(and(...baseConditions))
-      .groupBy(transactions.status);
-
-    // Revenue by day (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const revenueByDay = await db.select({
-      date: sql<string>`DATE(${transactions.date})`,
-      revenue: sum(transactions.revenue)
-    })
-      .from(transactions)
-      .where(and(
-        gte(transactions.date, sevenDaysAgo),
-        eq(transactions.isUpsell, true),
-        ...(agentId ? [eq(transactions.agentId, agentId)] : [])
-      ))
-      .groupBy(sql`DATE(${transactions.date})`)
-      .orderBy(sql`DATE(${transactions.date})`);
-
-    const totalCallsToday = callsResult.count || 0;
-    const successfulUpsells = upsellsResult.count || 0;
-    const conversionRate = totalCallsToday > 0 ? (successfulUpsells / totalCallsToday) * 100 : 0;
-
-    return {
-      totalCallsToday,
-      successfulUpsells,
-      revenueToday: Number(revenueResult.total) || 0,
-      conversionRate: Math.round(conversionRate * 100) / 100,
-      callsByStatus: statusResults.map(r => ({ status: r.status, count: r.count })),
-      revenueByDay: revenueByDay.map(r => ({ 
-        date: r.date, 
-        revenue: Number(r.revenue) || 0 
-      }))
-    };
-  }
-
-  async getAgentPerformance(): Promise<AgentPerformance[]> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const agentStats = await db.select({
-      agentId: users.id,
-      username: users.username,
-      role: users.role,
-      callsHandled: count(calls.id),
-      upsellsClosed: sql<number>`COUNT(CASE WHEN ${transactions.isUpsell} = true THEN 1 END)`,
-      revenue: sum(transactions.revenue),
-      avgHandlingTime: sql<number>`AVG(EXTRACT(EPOCH FROM (${calls.callEndedAt} - ${calls.callStartedAt})) / 60)`,
-    })
-      .from(users)
-      .leftJoin(calls, eq(users.id, calls.agentId))
-      .leftJoin(transactions, eq(calls.id, transactions.callId))
-      .where(and(
-        eq(users.role, 'agent'),
-        eq(users.isActive, true)
-      ))
-      .groupBy(users.id, users.username, users.role)
-      .orderBy(desc(sql`COUNT(${transactions.id})`));
-
-    return agentStats.map(stat => ({
-      agent: {
-        id: stat.agentId,
-        username: stat.username,
-        role: stat.role,
-      } as User,
-      callsHandled: stat.callsHandled || 0,
-      upsellsClosed: Number(stat.upsellsClosed) || 0,
-      conversionRate: stat.callsHandled > 0 ? 
-        Math.round((Number(stat.upsellsClosed) / stat.callsHandled) * 10000) / 100 : 0,
-      revenue: Number(stat.revenue) || 0,
-      averageHandlingTime: Math.round((Number(stat.avgHandlingTime) || 0) * 100) / 100,
-    }));
+    const { rows } = await this.pool.query(
+      `update public.users
+       set ${fields.join(", ")}
+       where id = $${i}
+       returning id, username, email, password_hash as password, role`,
+      values
+    );
+    return rows[0];
   }
 }
 
-export const storage = new DatabaseStorage();
+// --- Singleton instance ---
+export const storage = new DatabaseStorage(sharedPool);
